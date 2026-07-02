@@ -1,0 +1,12 @@
+{
+  "name": "@ahmerhh/webgraphiclibrary-fbo",
+  "version": "2.0.0-beta.1",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@ahmerhh/webgraphiclibrary-core": "workspace:*"
+  }
+}
