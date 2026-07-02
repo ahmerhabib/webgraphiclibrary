@@ -42,7 +42,7 @@ importers:
 
   packages/fbo:
     dependencies:
-      "@ahmerhh/webgraphiclibrary-core":
+      webgraphiclibrary-core:
         specifier: workspace:*
         version: link:../core
 

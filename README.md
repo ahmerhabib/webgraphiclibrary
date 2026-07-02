@@ -1,8 +1,8 @@
-# WebGraphicLibrary
+# webgraphiclibrary
 
 Small, type-safe WebGL utilities for people who still like working close to the graphics API.
 
-WebGraphicLibrary is not a scene graph, renderer, game engine, or replacement for Three.js. It is a set of focused wrappers around WebGL resources that are easy to reason about, easy to clean up, and small enough to drop into rendering experiments, post-processing pipelines, teaching projects, and custom engines.
+webgraphiclibrary is not a scene graph, renderer, game engine, or replacement for Three.js. It is a set of focused wrappers around WebGL resources that are easy to reason about, easy to clean up, and small enough to drop into rendering experiments, post-processing pipelines, teaching projects, and custom engines.
 
 The first v2 module is the framebuffer wrapper. It turns the noisy WebGL framebuffer setup flow into a small lifecycle API while keeping the underlying WebGL objects available when you need direct control.
 
@@ -11,29 +11,29 @@ The first v2 module is the framebuffer wrapper. It turns the noisy WebGL framebu
 ## Install
 
 ```bash
-npm install @ahmerhh/webgraphiclibrary
+npm install webgraphiclibrary
 ```
 
 ```bash
-pnpm add @ahmerhh/webgraphiclibrary
+pnpm add webgraphiclibrary
 ```
 
 ## Imports
 
 ```ts
-import { Framebuffer } from "@ahmerhh/webgraphiclibrary/fbo";
-import { WebGLError } from "@ahmerhh/webgraphiclibrary/core";
+import { Framebuffer } from "webgraphiclibrary/fbo";
+import { WebGLError } from "webgraphiclibrary/core";
 ```
 
 The package uses subpath exports so each module stays explicit. The current beta exports:
 
-- `@ahmerhh/webgraphiclibrary/fbo`
-- `@ahmerhh/webgraphiclibrary/core`
+- `webgraphiclibrary/fbo`
+- `webgraphiclibrary/core`
 
 ## Framebuffer quick start
 
 ```ts
-import { Framebuffer } from "@ahmerhh/webgraphiclibrary/fbo";
+import { Framebuffer } from "webgraphiclibrary/fbo";
 
 const canvas = document.querySelector("canvas");
 if (!(canvas instanceof HTMLCanvasElement)) {
@@ -146,7 +146,7 @@ Deletes the framebuffer, color texture, and optional renderbuffer. Disposal is i
 The v2 API prefers the descriptive `Framebuffer` name, but the shorter `FBO` alias is exported too:
 
 ```ts
-import { FBO } from "@ahmerhh/webgraphiclibrary/fbo";
+import { FBO } from "webgraphiclibrary/fbo";
 
 const target = new FBO(gl, { width: 512, height: 512 });
 ```
@@ -186,6 +186,21 @@ The older WebGraphicLibrary packages are being rebuilt around the same small, ty
 - texture display debugging utilities
 
 Sprite-style helpers are intentionally outside the first v2 scope. They fit better as examples built on top of the low-level modules.
+
+## Related repositories
+
+This repository is the new home for the v2 work. The original package repositories are still useful for history and comparison:
+
+| Repository                                                                                               | Notes                            |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| [WebGraphicLibrary-fixedbaseoperator](https://github.com/ahmerhabib/WebGraphicLibrary-fixedbaseoperator) | Original framebuffer/FBO package |
+| [WebGraphicLibrary-texture-display](https://github.com/ahmerhabib/WebGraphicLibrary-texture-display)     | Texture display helper           |
+| [WebGraphicLibrary-buffer](https://github.com/ahmerhabib/WebGraphicLibrary-buffer)                       | WebGL buffer wrapper             |
+| [WebGraphicLibrary-sprite](https://github.com/ahmerhabib/WebGraphicLibrary-sprite)                       | Sprite template package          |
+| [webgraphiclibrary-program](https://github.com/ahmerhabib/webgraphiclibrary-program)                     | WebGL program wrapper            |
+| [WebGraphicLibrary-texture](https://github.com/ahmerhabib/WebGraphicLibrary-texture)                     | WebGL texture wrapper            |
+| [WebGraphicLibrary-context](https://github.com/ahmerhabib/WebGraphicLibrary-context)                     | Canvas context helper            |
+| [WebGraphicLibrary-shader](https://github.com/ahmerhabib/WebGraphicLibrary-shader)                       | WebGL shader wrapper             |
 
 ## License
 

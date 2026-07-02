@@ -1,11 +1,19 @@
 {
-  "name": "@ahmerhh/webgraphiclibrary",
+  "name": "webgraphiclibrary",
   "version": "2.0.0-beta.1",
   "description": "Small, type-safe WebGL utilities for low-level rendering workflows.",
   "type": "module",
   "private": false,
   "license": "MIT",
-  "author": "ahmerhh",
+  "author": "ahmerhabib",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmerhabib/webgraphiclibrary.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ahmerhabib/webgraphiclibrary/issues"
+  },
+  "homepage": "https://github.com/ahmerhabib/webgraphiclibrary#readme",
   "engines": {
     "node": ">=22"
   },

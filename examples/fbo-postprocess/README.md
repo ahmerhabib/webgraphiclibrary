@@ -1,6 +1,6 @@
 # FBO post-process workflow
 
-This is the first visual acceptance target for WebGraphicLibrary v2.
+This is the first visual acceptance target for webgraphiclibrary v2.
 
 The intended workflow is:
 
