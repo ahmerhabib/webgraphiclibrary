@@ -1,15 +1,19 @@
 # FBO post-process workflow
 
-This is the first visual acceptance target for webgraphiclibrary v2.
+This example is the first visual acceptance target for webgraphiclibrary v2.
 
-The intended workflow is:
+It uses the package's `Framebuffer` wrapper for the off-screen render target, then keeps the rest of the WebGL pipeline intentionally raw. That makes the workflow easy to inspect:
 
 1. Create a `Framebuffer` with a color texture and optional depth storage.
-2. Render a scene while the framebuffer is bound.
+2. Render the scene while the framebuffer is bound.
 3. Unbind the framebuffer.
 4. Sample `framebuffer.texture` in a screen-space pass.
 5. Resize and dispose the framebuffer with the rest of the render lifecycle.
 
-![FBO workflow](../../docs/assets/fbo-workflow.png)
+Run `pnpm build` first, then open `index.html` through a local server. The repository screenshot script does this automatically when you run:
 
-This example starts as a documented workflow target. The next package slice will add the shader, program, buffer, and texture helpers needed for a complete browser demo without raw WebGL setup code in the example.
+```bash
+pnpm screenshots
+```
+
+![FBO post-process demo](../../docs/screenshots/fbo-postprocess-demo.png)

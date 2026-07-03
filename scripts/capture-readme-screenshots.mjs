@@ -1,5 +1,8 @@
+import { createServer } from "node:http";
+import { URL } from "node:url";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, extname, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = process.cwd();
@@ -8,7 +11,10 @@ mkdirSync(outputDir, { recursive: true });
 
 const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const launchOptions = existsSync(chromePath) ? { executablePath: chromePath } : {};
-const workflowImage = `data:image/png;base64,${readFileSync(join(root, "docs", "assets", "fbo-workflow.png")).toString("base64")}`;
+const demoPath = join(root, "examples", "fbo-postprocess", "index.html");
+
+const verification = runVerification();
+const codeSnippet = extractDemoSnippet(readFileSync(demoPath, "utf8"));
 
 const html = String.raw`
 <!doctype html>
@@ -32,7 +38,7 @@ const html = String.raw`
       .panel {
         width: 1080px;
         border: 1px solid #d7e1e8;
-        border-radius: 18px;
+        border-radius: 8px;
         background: #ffffff;
         box-shadow: 0 22px 60px rgba(17, 33, 48, 0.16);
         overflow: hidden;
@@ -62,7 +68,7 @@ const html = String.raw`
         margin: 0;
         padding: 28px;
         font:
-          16px/1.7 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+          15px/1.62 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
         white-space: pre-wrap;
       }
 
@@ -75,82 +81,31 @@ const html = String.raw`
         color: #d7f3ff;
         background: #101923;
       }
-
-      .terminal .muted {
-        color: #7f99aa;
-      }
-
-      .workflow {
-        padding: 24px;
-        background: #f7fafc;
-      }
-
-      .workflow img {
-        display: block;
-        width: 100%;
-        border-radius: 12px;
-      }
     </style>
   </head>
   <body>
     <section id="code" class="panel">
       <div class="header">
-        <h1 class="title">Scoped framebuffer rendering</h1>
-        <span class="meta">webgraphiclibrary/fbo</span>
+        <h1 class="title">Framebuffer example source</h1>
+        <span class="meta">examples/fbo-postprocess/index.html</span>
       </div>
-      <pre class="code"><code>import { Framebuffer } from "webgraphiclibrary/fbo";
-
-const fbo = new Framebuffer(gl, {
-  width: canvas.width,
-  height: canvas.height,
-  depth: true
-});
-
-fbo.withBound(() => {
-  gl.viewport(0, 0, fbo.width, fbo.height);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  renderScene();
-});
-
-fbo.resizeToCanvas(canvas);
-gl.bindTexture(gl.TEXTURE_2D, fbo.texture);</code></pre>
+      <pre class="code"><code>${escapeHtml(codeSnippet)}</code></pre>
     </section>
 
     <section id="terminal" class="panel">
       <div class="header">
         <h1 class="title">Release verification</h1>
-        <span class="meta">local package check</span>
+        <span class="meta">pnpm prepublishOnly</span>
       </div>
-      <pre class="terminal"><code>$ pnpm prepublishOnly
-$ eslint .
-$ tsc -p tsconfig.base.json --noEmit
-$ vitest run
-
- ✓ packages/core/src/index.test.ts (6 tests)
- ✓ packages/fbo/src/framebuffer.test.ts (14 tests)
-
- Test Files  2 passed (2)
-      Tests  20 passed (20)
-
-$ tsup
-ESM Build success
-DTS Build success</code></pre>
-    </section>
-
-    <section id="workflow" class="panel">
-      <div class="header">
-        <h1 class="title">Framebuffer workflow</h1>
-        <span class="meta">off-screen pass to screen pass</span>
-      </div>
-      <div class="workflow">
-        <img src="${workflowImage}" alt="Framebuffer workflow" />
-      </div>
+      <pre class="terminal"><code>${escapeHtml(verification)}</code></pre>
     </section>
   </body>
 </html>`;
 
+const server = await startStaticServer(root);
 const browser = await chromium.launch({
   headless: true,
+  args: ["--use-gl=swiftshader"],
   ...launchOptions
 });
 
@@ -167,9 +122,166 @@ try {
   await page.locator("#terminal").screenshot({
     path: join(outputDir, "terminal-verification.png")
   });
-  await page.locator("#workflow").screenshot({
-    path: join(outputDir, "fbo-workflow-card.png")
+
+  const demo = await browser.newPage({
+    viewport: { width: 1280, height: 820 },
+    deviceScaleFactor: 1
+  });
+  const errors = [];
+  demo.on("pageerror", (error) => errors.push(error.message));
+  demo.on("console", (message) => {
+    if (message.type() === "error") {
+      errors.push(message.text());
+    }
+  });
+
+  await demo.goto(`${server.url}/examples/fbo-postprocess/index.html`, {
+    waitUntil: "networkidle"
+  });
+  await demo.waitForFunction("window.__WEBGRAPHICLIBRARY_DEMO_READY__ === true");
+
+  if (errors.length > 0) {
+    throw new Error(`Demo produced browser errors:\n${errors.join("\n")}`);
+  }
+
+  await demo.locator(".frame").screenshot({
+    path: join(outputDir, "fbo-postprocess-demo.png")
   });
 } finally {
   await browser.close();
+  await server.close();
+}
+
+function runVerification() {
+  const result = spawnSync("pnpm", ["prepublishOnly"], {
+    cwd: root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CI: "1",
+      FORCE_COLOR: "0",
+      NO_COLOR: "1"
+    }
+  });
+
+  const output = stripAnsi(`${result.stdout}${result.stderr}`).trim();
+
+  if (result.status !== 0) {
+    throw new Error(output);
+  }
+
+  return limitTerminalOutput(output);
+}
+
+function extractDemoSnippet(source) {
+  const lines = source.split("\n");
+  const wanted = [
+    'import { Framebuffer } from "../../dist/fbo.js";',
+    "const fbo = new Framebuffer(gl, {",
+    "fbo.withBound(() => {",
+    "gl.bindTexture(gl.TEXTURE_2D, fbo.texture);"
+  ];
+
+  const snippets = wanted
+    .map((needle) => {
+      const index = lines.findIndex((line) => line.includes(needle));
+      if (index === -1) {
+        return "";
+      }
+
+      const end = needle.includes("{") ? Math.min(index + 8, lines.length) : index + 1;
+      return lines
+        .slice(index, end)
+        .map((line) => line.replace(/^ {6}/, ""))
+        .join("\n");
+    })
+    .filter(Boolean);
+
+  return snippets.join("\n\n");
+}
+
+async function startStaticServer(root) {
+  const server = createServer((request, response) => {
+    const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
+    const pathname = decodeURIComponent(requestUrl.pathname);
+
+    if (pathname === "/favicon.ico") {
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+
+    const filePath = join(
+      root,
+      pathname === "/" ? "examples/fbo-postprocess/index.html" : pathname
+    );
+
+    if (!filePath.startsWith(root) || !existsSync(filePath)) {
+      response.writeHead(404);
+      response.end("Not found");
+      return;
+    }
+
+    response.writeHead(200, {
+      "content-type": contentType(filePath)
+    });
+    response.end(readFileSync(filePath));
+  });
+
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () =>
+      new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+  };
+}
+
+function contentType(filePath) {
+  const extension = extname(basename(filePath));
+
+  if (extension === ".html") {
+    return "text/html; charset=utf-8";
+  }
+
+  if (extension === ".js") {
+    return "text/javascript; charset=utf-8";
+  }
+
+  if (extension === ".css") {
+    return "text/css; charset=utf-8";
+  }
+
+  if (extension === ".png") {
+    return "image/png";
+  }
+
+  return "application/octet-stream";
+}
+
+function stripAnsi(value) {
+  const escape = String.fromCharCode(27);
+  return value.replace(new RegExp(`${escape}\\[[0-9;]*m`, "g"), "");
+}
+
+function limitTerminalOutput(output) {
+  const lines = output.split("\n").filter((line) => !line.includes("Browserslist"));
+  const importantStart = lines.findIndex((line) => line.includes("> webgraphiclibrary@"));
+  const trimmed = importantStart > -1 ? lines.slice(importantStart) : lines;
+  const maxLines = 44;
+
+  if (trimmed.length <= maxLines) {
+    return trimmed.join("\n");
+  }
+
+  return [...trimmed.slice(0, 18), "...", ...trimmed.slice(-25)].join("\n");
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
