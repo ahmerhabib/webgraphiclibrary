@@ -26,6 +26,8 @@ export interface FramebufferResizeOptions {
   height: number;
 }
 
+export type FramebufferCanvasSize = Pick<HTMLCanvasElement, "width" | "height">;
+
 type TextureOptions = Required<
   Pick<
     FramebufferOptions,
@@ -99,6 +101,16 @@ export class Framebuffer {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
 
+  public withBound<T>(render: () => T): T {
+    this.bind();
+
+    try {
+      return render();
+    } finally {
+      this.unbind();
+    }
+  }
+
   public resize(options: FramebufferResizeOptions): void {
     assertNotDisposed("Framebuffer", this.isDisposed);
     this.width = assertPositiveIntegerDimension("width", options.width);
@@ -113,6 +125,10 @@ export class Framebuffer {
 
     this.assertComplete();
     this.unbind();
+  }
+
+  public resizeToCanvas(canvas: FramebufferCanvasSize): void {
+    this.resize({ width: canvas.width, height: canvas.height });
   }
 
   public readPixels(): Uint8Array {

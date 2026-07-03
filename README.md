@@ -8,14 +8,24 @@ The first v2 module is the framebuffer wrapper. It turns the noisy WebGL framebu
 
 ![Framebuffer workflow](docs/assets/fbo-workflow.png)
 
+## Project snapshots
+
+The screenshots below are generated with Playwright from this repository's current API examples and verification commands.
+
+![Scoped framebuffer code snippet](docs/screenshots/code-snippet.png)
+
+![Release verification terminal](docs/screenshots/terminal-verification.png)
+
+![Framebuffer workflow card](docs/screenshots/fbo-workflow-card.png)
+
 ## Install
 
 ```bash
-npm install webgraphiclibrary
+npm install webgraphiclibrary@beta
 ```
 
 ```bash
-pnpm add webgraphiclibrary
+pnpm add webgraphiclibrary@beta
 ```
 
 ## Imports
@@ -51,14 +61,13 @@ const fbo = new Framebuffer(gl, {
   depth: true
 });
 
-fbo.bind();
-gl.viewport(0, 0, fbo.width, fbo.height);
-gl.clearColor(0, 0, 0, 1);
-gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+fbo.withBound(() => {
+  gl.viewport(0, 0, fbo.width, fbo.height);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-// Draw the off-screen scene here.
-
-fbo.unbind();
+  // Draw the off-screen scene here.
+});
 
 gl.viewport(0, 0, canvas.width, canvas.height);
 gl.bindTexture(gl.TEXTURE_2D, fbo.texture);
@@ -120,12 +129,30 @@ Binds the framebuffer so future draw calls write into `texture`.
 
 Binds the default screen framebuffer.
 
+#### `withBound(render)`
+
+Binds the framebuffer, runs the callback, and unbinds in a `finally` block. This keeps render passes compact and still makes the WebGL state change explicit.
+
+```ts
+fbo.withBound(() => {
+  renderScene();
+});
+```
+
 #### `resize({ width, height })`
 
 Reallocates texture and renderbuffer storage while keeping the same framebuffer object.
 
 ```ts
 fbo.resize({ width: canvas.width, height: canvas.height });
+```
+
+#### `resizeToCanvas(canvas)`
+
+Convenience wrapper for matching a framebuffer to a canvas backing-store size.
+
+```ts
+fbo.resizeToCanvas(canvas);
 ```
 
 #### `readPixels()`
@@ -171,9 +198,22 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm screenshots
 ```
 
 `pnpm prepublishOnly` runs the full local release check: lint, typecheck, tests, and build.
+
+`pnpm screenshots` regenerates the README screenshots with Playwright.
+
+## npm package
+
+The current release target is the beta package:
+
+```bash
+npm publish --tag beta
+```
+
+The package ships compiled ESM output, TypeScript declarations, README assets, and examples.
 
 ## Roadmap
 

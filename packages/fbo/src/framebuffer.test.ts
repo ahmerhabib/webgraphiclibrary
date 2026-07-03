@@ -120,6 +120,33 @@ describe("Framebuffer", () => {
     expect(bindCalls.at(-1)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, null]);
   });
 
+  it("scopes rendering work with withBound", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
+
+    const result = framebuffer.withBound(() => "rendered");
+
+    expect(result).toBe("rendered");
+    const bindCalls = gl.calls.filter(([name]) => name === "bindFramebuffer");
+    expect(bindCalls.at(-2)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, framebuffer.framebuffer]);
+    expect(bindCalls.at(-1)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, null]);
+  });
+
+  it("unbinds even when withBound throws", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
+
+    expect(() =>
+      framebuffer.withBound(() => {
+        throw new Error("render failed");
+      })
+    ).toThrow("render failed");
+
+    const bindCalls = gl.calls.filter(([name]) => name === "bindFramebuffer");
+    expect(bindCalls.at(-2)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, framebuffer.framebuffer]);
+    expect(bindCalls.at(-1)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, null]);
+  });
+
   it("resizes texture storage without replacing the framebuffer object", () => {
     const gl = createMockGL();
     const framebuffer = new Framebuffer(gl, { width: 16, height: 16, depth: true });
@@ -132,6 +159,16 @@ describe("Framebuffer", () => {
     expect(framebuffer.height).toBe(24);
     expect(gl.calls.filter(([name]) => name === "texImage2D")).toHaveLength(2);
     expect(gl.calls.filter(([name]) => name === "renderbufferStorage")).toHaveLength(2);
+  });
+
+  it("resizes from canvas dimensions", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
+
+    framebuffer.resizeToCanvas({ width: 80, height: 40 });
+
+    expect(framebuffer.width).toBe(80);
+    expect(framebuffer.height).toBe(40);
   });
 
   it("reads RGBA unsigned byte pixels", () => {

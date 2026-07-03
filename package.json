@@ -21,7 +21,10 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE.md"
+    "LICENSE.md",
+    "docs/assets",
+    "docs/screenshots",
+    "examples"
   ],
   "exports": {
     ".": {
@@ -46,18 +49,36 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
-    "prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "screenshots": "node scripts/capture-readme-screenshots.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.19.1",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.39.1",
+    "playwright": "^1.61.1",
     "prettier": "^3.7.4",
     "rimraf": "^6.1.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.49.0",
     "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "keywords": [
+    "webgl",
+    "framebuffer",
+    "fbo",
+    "graphics",
+    "rendering",
+    "typescript",
+    "offscreen-rendering"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "tag": "beta"
   }
 }
