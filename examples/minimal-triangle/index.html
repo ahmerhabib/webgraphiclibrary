@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — minimal triangle</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0d1722;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene" width="960" height="600"></canvas>
+
+    <script type="module">
+      // The smallest end-to-end render using the resource wrappers:
+      // Shader -> Program (uniform + attribute helpers) -> GLBuffer.
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl");
+      if (gl === null) {
+        throw new Error("WebGL is not available in this browser.");
+      }
+
+      const program = new Program(gl, {
+        vertexShader: new Shader(gl, {
+          type: gl.VERTEX_SHADER,
+          source: `
+            attribute vec2 position;
+            void main() {
+              gl_Position = vec4(position, 0.0, 1.0);
+            }
+          `
+        }),
+        fragmentShader: new Shader(gl, {
+          type: gl.FRAGMENT_SHADER,
+          source: `
+            precision mediump float;
+            uniform vec3 color;
+            void main() {
+              gl_FragColor = vec4(color, 1.0);
+            }
+          `
+        })
+      });
+
+      const geometry = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([0.0, 0.8, -0.8, -0.8, 0.8, -0.8])
+      });
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0.05, 0.09, 0.14, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      program.withUsed(() => {
+        program.setUniform3f("color", 0.16, 0.72, 0.62);
+        program.enableAttribute("position", { buffer: geometry, size: 2 });
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      });
+
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+    </script>
+  </body>
+</html>

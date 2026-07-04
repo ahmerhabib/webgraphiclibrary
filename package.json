@@ -67,6 +67,7 @@
     "screenshots": "node scripts/capture-readme-screenshots.mjs",
     "pack:check": "npm --cache /tmp/webgraphiclibrary-npm-cache pack --dry-run",
     "check:package": "node scripts/check-package.mjs",
+    "check:browser": "node scripts/check-browser.mjs",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:package"
   },
   "devDependencies": {

@@ -63,7 +63,17 @@ async function checkDistExports() {
     }
   }
 
-  console.log("OK dist subpath exports and type declarations present");
+  // Shared classes must keep a single identity across subpaths, otherwise
+  // `instanceof WebGLError` fails between, say, `/core` and `/shader`.
+  const core = await import(pathToFileURL(join(dist, "core.js")).href);
+  const index = await import(pathToFileURL(join(dist, "index.js")).href);
+  if (core.WebGLError !== index.WebGLError) {
+    throw new Error(
+      "WebGLError has different identities across subpaths (is tsup `splitting` enabled?)."
+    );
+  }
+
+  console.log("OK dist subpath exports, declarations, and shared class identity");
 }
 
 function checkPackedTarball() {

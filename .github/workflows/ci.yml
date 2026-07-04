@@ -51,6 +51,34 @@ jobs:
       - name: Audit runtime dependencies
         run: pnpm audit --prod
 
+  browser:
+    name: Real-browser render tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.14.0
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run browser render tests
+        run: pnpm check:browser
+
   screenshots:
     name: Regenerate README screenshots
     if: github.event_name == 'workflow_dispatch'

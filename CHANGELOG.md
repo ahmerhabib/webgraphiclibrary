@@ -2,6 +2,31 @@
 
 All notable changes to this package are documented here.
 
+## Unreleased
+
+### Added
+
+- Scoped binding helpers: `GLBuffer.withBound`, `Texture2D.withBound`, and `Program.withUsed`.
+- `Program` uniform ergonomics: cached `tryGetUniformLocation`, typed `setUniform*` setters, `setTexture`, and the `enableAttribute` vertex-layout helper (with WebGL2 instancing `divisor`).
+- `GLBuffer.updateSubData` for partial buffer updates.
+- `Texture2D` image/canvas/video uploads (`uploadImage` and the `image` option), `flipY` / `premultiplyAlpha` options, and `generateMipmap`.
+- Allocation-free readback: `Framebuffer.readPixelsInto` and `readTexturePixelsInto`.
+- `Framebuffer.invalidate` (WebGL2) and automatic float/half-float color-buffer extension enabling.
+- Shared `withSavedBindings` primitive exported from `core`.
+- Real-browser render tests (`pnpm check:browser`), a packaged-export/tarball check (`pnpm check:package`), and additional examples (minimal-triangle, pipeline, picking, self-test).
+- Documentation: rewritten README plus per-module reference pages, a support matrix, and a comparison page.
+
+### Fixed
+
+- Enabled bundler code splitting so shared classes (for example `WebGLError`) keep a single identity across subpath exports, fixing `instanceof` checks between `webgraphiclibrary/core` and other entry points.
+
+### Changed
+
+- Context validation now applies to `Shader`, `Program`, `GLBuffer`, and `Texture2D` (previously only `Framebuffer`).
+- Shader compile errors are annotated with the shader stage and numbered source; program link errors are clearly prefixed.
+- `pnpm verify` runs the real gate (format, lint, typecheck, test, build, packaged-export check) instead of nesting it inside the screenshot script; CI runs each step explicitly with a separate browser-test job and `pnpm audit`.
+- Trimmed the published tarball to `dist` plus documentation text (~40 kB).
+
 ## 2.0.0-beta.1
 
 - Rebuilt the package around explicit TypeScript subpath exports.

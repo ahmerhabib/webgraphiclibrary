@@ -14,6 +14,9 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  splitting: false,
+  // Shared code (e.g. the `core` error classes) must live in one chunk so a
+  // class like WebGLError has a single identity across every subpath export;
+  // otherwise `instanceof` fails between, say, `.../core` and `.../shader`.
+  splitting: true,
   treeshake: true
 });
