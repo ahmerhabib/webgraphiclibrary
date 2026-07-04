@@ -14,7 +14,7 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { Texture2D, readTexturePixels } from "../../dist/texture.js";
-      import { Framebuffer } from "../../dist/fbo.js";
+      import { Framebuffer, MultiTarget } from "../../dist/fbo.js";
       import { WebGLError } from "../../dist/core.js";
 
       const failures = [];
@@ -131,6 +131,67 @@
         program.dispose();
         quad.dispose();
         drawTarget.dispose();
+
+        // MultiTarget (WebGL2 MRT): render distinct colors to two attachments
+        // and read each back.
+        const gl2Canvas = document.createElement("canvas");
+        gl2Canvas.width = 2;
+        gl2Canvas.height = 2;
+        const gl2 = gl2Canvas.getContext("webgl2");
+        if (gl2 !== null) {
+          const mrt = new MultiTarget(gl2, { width: 2, height: 2, attachments: 2 });
+          check("MRT creates two attachment textures", mrt.textures.length === 2);
+
+          const mrtProgram = new Program(gl2, {
+            vertexShader: new Shader(gl2, {
+              type: gl2.VERTEX_SHADER,
+              source: `#version 300 es
+                in vec2 position;
+                void main() { gl_Position = vec4(position, 0.0, 1.0); }`
+            }),
+            fragmentShader: new Shader(gl2, {
+              type: gl2.FRAGMENT_SHADER,
+              source: `#version 300 es
+                precision mediump float;
+                layout(location = 0) out vec4 target0;
+                layout(location = 1) out vec4 target1;
+                void main() {
+                  target0 = vec4(1.0, 0.0, 0.0, 1.0);
+                  target1 = vec4(0.0, 0.0, 1.0, 1.0);
+                }`
+            })
+          });
+          const mrtQuad = new GLBuffer(gl2, {
+            target: gl2.ARRAY_BUFFER,
+            data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+          });
+
+          mrt.withBound(() => {
+            gl2.viewport(0, 0, 2, 2);
+            gl2.clear(gl2.COLOR_BUFFER_BIT);
+            mrtProgram.withUsed(() => {
+              mrtProgram.enableAttribute("position", { buffer: mrtQuad, size: 2 });
+              gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+            });
+          });
+
+          const attachment0 = mrt.readPixels(0);
+          const attachment1 = mrt.readPixels(1);
+          check(
+            "MRT attachment 0 is red",
+            attachment0[0] === 255 && attachment0[1] === 0 && attachment0[2] === 0,
+            `[${attachment0[0]}, ${attachment0[1]}, ${attachment0[2]}]`
+          );
+          check(
+            "MRT attachment 1 is blue",
+            attachment1[0] === 0 && attachment1[1] === 0 && attachment1[2] === 255,
+            `[${attachment1[0]}, ${attachment1[1]}, ${attachment1[2]}]`
+          );
+
+          mrt.dispose();
+          mrtProgram.dispose();
+          mrtQuad.dispose();
+        }
       } catch (error) {
         failures.push(`threw: ${error instanceof Error ? error.message : String(error)}`);
       }
