@@ -8,6 +8,9 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
   const framebuffer = { type: "framebuffer" };
   const texture = { type: "texture" };
   const renderbuffer = { type: "renderbuffer" };
+  let framebufferBinding: unknown = null;
+  let textureBinding: unknown = null;
+  let renderbufferBinding: unknown = null;
 
   const gl = {
     calls,
@@ -21,6 +24,7 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     DEPTH_STENCIL: 0x84f9,
     RGBA: 0x1908,
     UNSIGNED_BYTE: 0x1401,
+    FLOAT: 0x1406,
     LINEAR: 0x2601,
     CLAMP_TO_EDGE: 0x812f,
     FRAMEBUFFER_COMPLETE: 0x8cd5,
@@ -32,12 +36,39 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     TEXTURE_MAG_FILTER: 0x2800,
     TEXTURE_WRAP_S: 0x2802,
     TEXTURE_WRAP_T: 0x2803,
+    FRAMEBUFFER_BINDING: 0x8ca6,
+    TEXTURE_BINDING_2D: 0x8069,
+    RENDERBUFFER_BINDING: 0x8ca7,
     createFramebuffer: () => framebuffer,
     createTexture: () => texture,
     createRenderbuffer: () => renderbuffer,
-    bindFramebuffer: (...args: unknown[]) => calls.push(["bindFramebuffer", ...args]),
-    bindTexture: (...args: unknown[]) => calls.push(["bindTexture", ...args]),
-    bindRenderbuffer: (...args: unknown[]) => calls.push(["bindRenderbuffer", ...args]),
+    bindFramebuffer: (...args: unknown[]) => {
+      framebufferBinding = args[1];
+      calls.push(["bindFramebuffer", ...args]);
+    },
+    bindTexture: (...args: unknown[]) => {
+      textureBinding = args[1];
+      calls.push(["bindTexture", ...args]);
+    },
+    bindRenderbuffer: (...args: unknown[]) => {
+      renderbufferBinding = args[1];
+      calls.push(["bindRenderbuffer", ...args]);
+    },
+    getParameter: (parameter: number) => {
+      if (parameter === gl.FRAMEBUFFER_BINDING) {
+        return framebufferBinding;
+      }
+
+      if (parameter === gl.TEXTURE_BINDING_2D) {
+        return textureBinding;
+      }
+
+      if (parameter === gl.RENDERBUFFER_BINDING) {
+        return renderbufferBinding;
+      }
+
+      return null;
+    },
     texParameteri: (...args: unknown[]) => calls.push(["texParameteri", ...args]),
     texImage2D: (...args: unknown[]) => calls.push(["texImage2D", ...args]),
     framebufferTexture2D: (...args: unknown[]) => calls.push(["framebufferTexture2D", ...args]),
@@ -108,6 +139,35 @@ describe("Framebuffer", () => {
     expect(() => new Framebuffer(gl, { width: 16, height: 16 })).toThrow("incomplete attachment");
   });
 
+  it("cleans up allocated resources when framebuffer setup fails", () => {
+    const gl = createMockGL({
+      checkFramebufferStatus: () => 0x8cd6
+    });
+
+    expect(() => new Framebuffer(gl, { width: 16, height: 16, depth: true })).toThrow(
+      "incomplete attachment"
+    );
+    expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(1);
+    expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
+    expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(1);
+  });
+
+  it("restores previous framebuffer, texture, and renderbuffer bindings after construction", () => {
+    const gl = createMockGL();
+    const previousFramebuffer = { type: "previous-framebuffer" };
+    const previousTexture = { type: "previous-texture" };
+    const previousRenderbuffer = { type: "previous-renderbuffer" };
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, previousTexture);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, previousRenderbuffer);
+
+    new Framebuffer(gl, { width: 16, height: 16, depth: true });
+
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previousFramebuffer);
+    expect(gl.getParameter(gl.TEXTURE_BINDING_2D)).toBe(previousTexture);
+    expect(gl.getParameter(gl.RENDERBUFFER_BINDING)).toBe(previousRenderbuffer);
+  });
+
   it("binds and unbinds the framebuffer", () => {
     const gl = createMockGL();
     const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
@@ -147,6 +207,20 @@ describe("Framebuffer", () => {
     expect(bindCalls.at(-1)).toEqual(["bindFramebuffer", gl.FRAMEBUFFER, null]);
   });
 
+  it("restores the previous framebuffer binding after scoped work", () => {
+    const gl = createMockGL();
+    const previousFramebuffer = { type: "previous-framebuffer" };
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+
+    framebuffer.withBound(() => {
+      expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(framebuffer.framebuffer);
+    });
+
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previousFramebuffer);
+  });
+
   it("resizes texture storage without replacing the framebuffer object", () => {
     const gl = createMockGL();
     const framebuffer = new Framebuffer(gl, { width: 16, height: 16, depth: true });
@@ -159,6 +233,42 @@ describe("Framebuffer", () => {
     expect(framebuffer.height).toBe(24);
     expect(gl.calls.filter(([name]) => name === "texImage2D")).toHaveLength(2);
     expect(gl.calls.filter(([name]) => name === "renderbufferStorage")).toHaveLength(2);
+  });
+
+  it("restores previous framebuffer, texture, and renderbuffer bindings after resize", () => {
+    const gl = createMockGL();
+    const previousFramebuffer = { type: "previous-framebuffer" };
+    const previousTexture = { type: "previous-texture" };
+    const previousRenderbuffer = { type: "previous-renderbuffer" };
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16, depth: true });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+    gl.bindTexture(gl.TEXTURE_2D, previousTexture);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, previousRenderbuffer);
+
+    framebuffer.resize({ width: 32, height: 24 });
+
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previousFramebuffer);
+    expect(gl.getParameter(gl.TEXTURE_BINDING_2D)).toBe(previousTexture);
+    expect(gl.getParameter(gl.RENDERBUFFER_BINDING)).toBe(previousRenderbuffer);
+  });
+
+  it("keeps previous dimensions when resize allocation fails", () => {
+    let texImageCalls = 0;
+    const gl = createMockGL({
+      texImage2D: (...args: unknown[]) => {
+        texImageCalls += 1;
+        gl.calls.push(["texImage2D", ...args]);
+
+        if (texImageCalls === 2) {
+          throw new Error("allocation failed");
+        }
+      }
+    });
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16 });
+
+    expect(() => framebuffer.resize({ width: 32, height: 24 })).toThrow("allocation failed");
+    expect(framebuffer.width).toBe(16);
+    expect(framebuffer.height).toBe(16);
   });
 
   it("resizes from canvas dimensions", () => {
@@ -180,6 +290,48 @@ describe("Framebuffer", () => {
     expect(pixels).toBeInstanceOf(Uint8Array);
     expect(pixels).toHaveLength(16);
     expect(gl.calls.some(([name]) => name === "readPixels")).toBe(true);
+  });
+
+  it("reads pixels into a provided array and returns it", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2 });
+    const out = new Uint8Array(2 * 2 * 4);
+
+    const result = framebuffer.readPixelsInto(out);
+
+    expect(result).toBe(out);
+    expect(gl.calls).toContainEqual(["readPixels", 0, 0, 2, 2, gl.RGBA, gl.UNSIGNED_BYTE, out]);
+  });
+
+  it("throws when the readback array is too small", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 4, height: 4 });
+
+    expect(() => framebuffer.readPixelsInto(new Uint8Array(4))).toThrow(RangeError);
+  });
+
+  it("rejects readPixels for non-unsigned-byte readback", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, {
+      width: 2,
+      height: 2,
+      type: gl.FLOAT
+    });
+
+    expect(() => framebuffer.readPixels()).toThrow(
+      "readPixels currently supports RGBA UNSIGNED_BYTE"
+    );
+  });
+
+  it("restores the previous framebuffer binding after readPixels", () => {
+    const gl = createMockGL();
+    const previousFramebuffer = { type: "previous-framebuffer" };
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2 });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previousFramebuffer);
+
+    framebuffer.readPixels();
+
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previousFramebuffer);
   });
 
   it("disposes GPU resources once", () => {

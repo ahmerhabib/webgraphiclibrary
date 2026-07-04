@@ -155,6 +155,13 @@
       render();
       window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
 
+      window.addEventListener("pagehide", () => {
+        fbo.dispose();
+        gl.deleteBuffer(buffer);
+        gl.deleteProgram(sceneProgram);
+        gl.deleteProgram(screenProgram);
+      });
+
       function render() {
         fbo.withBound(() => {
           gl.viewport(0, 0, fbo.width, fbo.height);
@@ -196,9 +203,14 @@
         gl.linkProgram(program);
 
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          gl.deleteProgram(program);
+          gl.deleteShader(vertexShader);
+          gl.deleteShader(fragmentShader);
           throw new Error(gl.getProgramInfoLog(program) ?? "Unable to link WebGL program.");
         }
 
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
         return program;
       }
 
@@ -213,6 +225,7 @@
         gl.compileShader(shader);
 
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          gl.deleteShader(shader);
           throw new Error(gl.getShaderInfoLog(shader) ?? "Unable to compile WebGL shader.");
         }
 

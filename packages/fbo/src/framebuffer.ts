@@ -3,7 +3,8 @@ import {
   assertNotDisposed,
   assertPositiveIntegerDimension,
   getFramebufferStatusMessage,
-  isWebGLContext
+  isWebGLContext,
+  withSavedBindings as saveBindings
 } from "../../core/src/index";
 import type { GLContext } from "../../core/src/index";
 
@@ -81,11 +82,24 @@ export class Framebuffer {
 
     this.framebuffer = framebuffer;
     this.texture = texture;
-    this.renderbuffer = this.createRenderbuffer();
+    this.renderbuffer = null;
 
-    this.configureAttachments();
-    this.assertComplete();
-    this.unbind();
+    try {
+      this.renderbuffer = this.createRenderbuffer();
+      this.withSavedBindings(() => {
+        this.configureAttachments();
+        this.assertComplete();
+      });
+    } catch (error) {
+      gl.deleteFramebuffer(framebuffer);
+      gl.deleteTexture(texture);
+
+      if (this.renderbuffer !== null) {
+        gl.deleteRenderbuffer(this.renderbuffer);
+      }
+
+      throw error;
+    }
   }
 
   public get disposed(): boolean {
@@ -102,29 +116,38 @@ export class Framebuffer {
   }
 
   public withBound<T>(render: () => T): T {
-    this.bind();
-
-    try {
+    return this.withSavedBindings(() => {
+      this.bind();
       return render();
-    } finally {
-      this.unbind();
-    }
+    });
   }
 
   public resize(options: FramebufferResizeOptions): void {
     assertNotDisposed("Framebuffer", this.isDisposed);
-    this.width = assertPositiveIntegerDimension("width", options.width);
-    this.height = assertPositiveIntegerDimension("height", options.height);
+    const previousWidth = this.width;
+    const previousHeight = this.height;
+    const nextWidth = assertPositiveIntegerDimension("width", options.width);
+    const nextHeight = assertPositiveIntegerDimension("height", options.height);
 
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
-    this.allocateTextureStorage();
+    this.withSavedBindings(() => {
+      this.width = nextWidth;
+      this.height = nextHeight;
 
-    if (this.renderbuffer !== null) {
-      this.allocateRenderbufferStorage();
-    }
+      try {
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
+        this.allocateTextureStorage();
 
-    this.assertComplete();
-    this.unbind();
+        if (this.renderbuffer !== null) {
+          this.allocateRenderbufferStorage();
+        }
+
+        this.assertComplete();
+      } catch (error) {
+        this.width = previousWidth;
+        this.height = previousHeight;
+        throw error;
+      }
+    });
   }
 
   public resizeToCanvas(canvas: FramebufferCanvasSize): void {
@@ -132,21 +155,40 @@ export class Framebuffer {
   }
 
   public readPixels(): Uint8Array {
+    return this.readPixelsInto(new Uint8Array(this.width * this.height * 4));
+  }
+
+  /**
+   * Read RGBA pixels into a caller-provided array, avoiding a per-call
+   * allocation. The array must hold at least `width * height * 4` bytes.
+   */
+  public readPixelsInto(out: Uint8Array): Uint8Array {
     assertNotDisposed("Framebuffer", this.isDisposed);
 
-    const pixels = new Uint8Array(this.width * this.height * 4);
-    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
-    this.gl.readPixels(
-      0,
-      0,
-      this.width,
-      this.height,
-      this.options.format,
-      this.options.type,
-      pixels
-    );
-    this.unbind();
-    return pixels;
+    if (this.options.format !== this.gl.RGBA || this.options.type !== this.gl.UNSIGNED_BYTE) {
+      throw new WebGLError("readPixels currently supports RGBA UNSIGNED_BYTE framebuffers only.");
+    }
+
+    const required = this.width * this.height * 4;
+    if (out.length < required) {
+      throw new RangeError(
+        `Readback array must hold at least ${required} bytes, received ${out.length}.`
+      );
+    }
+
+    this.withSavedBindings(() => {
+      this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
+      this.gl.readPixels(
+        0,
+        0,
+        this.width,
+        this.height,
+        this.options.format,
+        this.options.type,
+        out
+      );
+    });
+    return out;
   }
 
   public dispose(): void {
@@ -237,5 +279,29 @@ export class Framebuffer {
     if (status !== this.gl.FRAMEBUFFER_COMPLETE) {
       throw new WebGLError(getFramebufferStatusMessage(this.gl, status));
     }
+  }
+
+  private withSavedBindings<T>(operation: () => T): T {
+    const gl = this.gl;
+
+    return saveBindings(
+      gl,
+      [
+        {
+          binding: gl.FRAMEBUFFER_BINDING,
+          restore: (value) => gl.bindFramebuffer(gl.FRAMEBUFFER, value as WebGLFramebuffer | null)
+        },
+        {
+          binding: gl.TEXTURE_BINDING_2D,
+          restore: (value) => gl.bindTexture(gl.TEXTURE_2D, value as WebGLTexture | null)
+        },
+        {
+          binding: gl.RENDERBUFFER_BINDING,
+          restore: (value) =>
+            gl.bindRenderbuffer(gl.RENDERBUFFER, value as WebGLRenderbuffer | null)
+        }
+      ],
+      operation
+    );
   }
 }
