@@ -53,9 +53,9 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
 
 describe("GLBuffer", () => {
   it("rejects a non-WebGL rendering context", () => {
-    expect(
-      () => new GLBuffer({} as unknown as WebGLRenderingContext, { target: 0x8892 })
-    ).toThrow("gl must be a WebGL rendering context.");
+    expect(() => new GLBuffer({} as unknown as WebGLRenderingContext, { target: 0x8892 })).toThrow(
+      "gl must be a WebGL rendering context."
+    );
   });
 
   it("uploads typed-array data and tracks byte length", () => {

@@ -12,11 +12,7 @@ import type { BindingSlot, GLContext } from "../../core/src/index";
  * `image` constructor option.
  */
 export type TextureImageSource =
-  | HTMLImageElement
-  | HTMLCanvasElement
-  | HTMLVideoElement
-  | ImageBitmap
-  | ImageData;
+  HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | ImageData;
 
 export interface Texture2DOptions {
   width: number;

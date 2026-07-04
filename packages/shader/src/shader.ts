@@ -34,7 +34,12 @@ export class Shader {
 
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         throw new WebGLError(
-          formatShaderCompileError(gl, options.type, gl.getShaderInfoLog(shader) ?? "", options.source)
+          formatShaderCompileError(
+            gl,
+            options.type,
+            gl.getShaderInfoLog(shader) ?? "",
+            options.source
+          )
         );
       }
     } catch (error) {

@@ -234,9 +234,7 @@ export class Framebuffer {
     const attachments: number[] = [gl.COLOR_ATTACHMENT0];
 
     if (this.renderbuffer !== null) {
-      attachments.push(
-        this.options.stencil ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT
-      );
+      attachments.push(this.options.stencil ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT);
     }
 
     return attachments;

@@ -36,4 +36,4 @@ jobs:
         run: pnpm verify
 
       - name: Publish package
-        run: npm publish --tag beta
+        run: npm publish --tag beta --provenance
