@@ -3,6 +3,7 @@ import {
   assertNotDisposed,
   assertPositiveIntegerDimension,
   getFramebufferStatusMessage,
+  isWebGL2,
   isWebGLContext,
   withSavedBindings as saveBindings
 } from "../../core/src/index";
@@ -85,6 +86,7 @@ export class Framebuffer {
     this.renderbuffer = null;
 
     try {
+      this.enableFloatRenderTarget();
       this.renderbuffer = this.createRenderbuffer();
       this.withSavedBindings(() => {
         this.configureAttachments();
@@ -191,6 +193,27 @@ export class Framebuffer {
     return out;
   }
 
+  /**
+   * Hint (WebGL2) that the given attachments' contents are no longer needed,
+   * letting the driver skip storing them. Defaults to the color attachment
+   * plus any depth/stencil attachment. No-op targets throw on WebGL1.
+   */
+  public invalidate(attachments?: readonly number[]): void {
+    assertNotDisposed("Framebuffer", this.isDisposed);
+    const gl = this.gl;
+
+    if (!("invalidateFramebuffer" in gl)) {
+      throw new WebGLError("invalidateFramebuffer requires a WebGL2 context.");
+    }
+
+    const targets = attachments ?? this.defaultInvalidateAttachments();
+
+    this.withSavedBindings(() => {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+      gl.invalidateFramebuffer(gl.FRAMEBUFFER, targets as number[]);
+    });
+  }
+
   public dispose(): void {
     if (this.isDisposed) {
       return;
@@ -204,6 +227,39 @@ export class Framebuffer {
     }
 
     this.isDisposed = true;
+  }
+
+  private defaultInvalidateAttachments(): number[] {
+    const gl = this.gl;
+    const attachments: number[] = [gl.COLOR_ATTACHMENT0];
+
+    if (this.renderbuffer !== null) {
+      attachments.push(
+        this.options.stencil ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT
+      );
+    }
+
+    return attachments;
+  }
+
+  private enableFloatRenderTarget(): void {
+    const gl = this.gl;
+    const type = this.options.type;
+    const halfFloat = "HALF_FLOAT" in gl ? gl.HALF_FLOAT : 0x8d61;
+
+    if (type !== gl.FLOAT && type !== halfFloat) {
+      return;
+    }
+
+    if (isWebGL2(gl)) {
+      gl.getExtension("EXT_color_buffer_float");
+    } else if (type === gl.FLOAT) {
+      gl.getExtension("OES_texture_float");
+      gl.getExtension("WEBGL_color_buffer_float");
+    } else {
+      gl.getExtension("OES_texture_half_float");
+      gl.getExtension("EXT_color_buffer_half_float");
+    }
   }
 
   private createRenderbuffer(): WebGLRenderbuffer | null {

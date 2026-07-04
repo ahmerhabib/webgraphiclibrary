@@ -42,6 +42,10 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     createFramebuffer: () => framebuffer,
     createTexture: () => texture,
     createRenderbuffer: () => renderbuffer,
+    getExtension: (...args: unknown[]) => {
+      calls.push(["getExtension", ...args]);
+      return {};
+    },
     bindFramebuffer: (...args: unknown[]) => {
       framebufferBinding = args[1];
       calls.push(["bindFramebuffer", ...args]);
@@ -290,6 +294,87 @@ describe("Framebuffer", () => {
     expect(pixels).toBeInstanceOf(Uint8Array);
     expect(pixels).toHaveLength(16);
     expect(gl.calls.some(([name]) => name === "readPixels")).toBe(true);
+  });
+
+  it("enables the float color-buffer extension for float render targets on WebGL2", () => {
+    const gl = createMockGL({ texStorage2D: () => undefined });
+
+    new Framebuffer(gl, {
+      width: 2,
+      height: 2,
+      internalFormat: 0x8814,
+      format: gl.RGBA,
+      type: gl.FLOAT
+    });
+
+    expect(gl.calls).toContainEqual(["getExtension", "EXT_color_buffer_float"]);
+  });
+
+  it("does not request float extensions for the default unsigned-byte target", () => {
+    const gl = createMockGL({ texStorage2D: () => undefined });
+
+    new Framebuffer(gl, { width: 2, height: 2 });
+
+    expect(gl.calls.some(([name]) => name === "getExtension")).toBe(false);
+  });
+
+  it("invalidates attachments on a WebGL2 context", () => {
+    const invalidateCalls: unknown[][] = [];
+    const gl = createMockGL({
+      texStorage2D: () => undefined,
+      invalidateFramebuffer: (...args: unknown[]) => invalidateCalls.push(args)
+    });
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2 });
+
+    framebuffer.invalidate();
+
+    expect(invalidateCalls).toContainEqual([gl.FRAMEBUFFER, [gl.COLOR_ATTACHMENT0]]);
+  });
+
+  it("includes the depth attachment when invalidating a depth framebuffer", () => {
+    const invalidateCalls: unknown[][] = [];
+    const gl = createMockGL({
+      texStorage2D: () => undefined,
+      invalidateFramebuffer: (...args: unknown[]) => invalidateCalls.push(args)
+    });
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2, depth: true });
+
+    framebuffer.invalidate();
+
+    expect(invalidateCalls).toContainEqual([
+      gl.FRAMEBUFFER,
+      [gl.COLOR_ATTACHMENT0, gl.DEPTH_ATTACHMENT]
+    ]);
+  });
+
+  it("throws when invalidate is used on a WebGL1 context", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2 });
+
+    expect(() => framebuffer.invalidate()).toThrow("WebGL2");
+  });
+
+  it("cleans up all resources when the framebuffer is incomplete", () => {
+    const gl = createMockGL({ checkFramebufferStatus: () => 0x8cd6 });
+
+    expect(() => new Framebuffer(gl, { width: 2, height: 2, depth: true })).toThrow();
+    expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(1);
+    expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
+    expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(1);
+  });
+
+  it("restores the previous framebuffer binding when withBound throws", () => {
+    const gl = createMockGL();
+    const framebuffer = new Framebuffer(gl, { width: 2, height: 2 });
+    const previous = { type: "previous-framebuffer" };
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previous);
+
+    expect(() =>
+      framebuffer.withBound(() => {
+        throw new Error("boom");
+      })
+    ).toThrow("boom");
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previous);
   });
 
   it("reads pixels into a provided array and returns it", () => {

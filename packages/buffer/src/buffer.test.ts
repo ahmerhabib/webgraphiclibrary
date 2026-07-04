@@ -167,6 +167,19 @@ describe("GLBuffer", () => {
     );
   });
 
+  it("deletes the buffer when the initial upload fails", () => {
+    const gl = createMockGL({
+      bufferData: () => {
+        throw new Error("upload failed");
+      }
+    });
+
+    expect(
+      () => new GLBuffer(gl, { target: gl.ARRAY_BUFFER, data: new Float32Array([1]) })
+    ).toThrow("upload failed");
+    expect(gl.calls.filter(([name]) => name === "deleteBuffer")).toHaveLength(1);
+  });
+
   it("disposes once and rejects upload after disposal", () => {
     const gl = createMockGL();
     const buffer = new GLBuffer(gl, { target: gl.ARRAY_BUFFER });

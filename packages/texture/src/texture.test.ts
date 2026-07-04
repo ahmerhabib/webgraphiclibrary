@@ -261,6 +261,31 @@ describe("Texture2D", () => {
     expect(() => readTexturePixelsInto(gl, texture, new Uint8Array(4))).toThrow(RangeError);
   });
 
+  it("deletes the texture when allocation fails", () => {
+    const gl = createMockGL({
+      texImage2D: () => {
+        throw new Error("allocation failed");
+      }
+    });
+
+    expect(() => new Texture2D(gl, { width: 4, height: 4 })).toThrow("allocation failed");
+    expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
+  });
+
+  it("restores the previous texture binding when withBound throws", () => {
+    const gl = createMockGL();
+    const texture = new Texture2D(gl, { width: 4, height: 4 });
+    const previous = { type: "previous-texture" };
+    gl.bindTexture(gl.TEXTURE_2D, previous);
+
+    expect(() =>
+      texture.withBound(() => {
+        throw new Error("boom");
+      })
+    ).toThrow("boom");
+    expect(gl.getParameter(gl.TEXTURE_BINDING_2D)).toBe(previous);
+  });
+
   it("disposes once and rejects upload after disposal", () => {
     const gl = createMockGL();
     const texture = new Texture2D(gl, { width: 8, height: 4 });
