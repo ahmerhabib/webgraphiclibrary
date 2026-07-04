@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — MRT G-buffer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1017;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: 1280px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+      .frame {
+        position: relative;
+        line-height: 0;
+      }
+      canvas {
+        display: block;
+        width: 1280px;
+        height: 720px;
+      }
+      .grid-v,
+      .grid-h {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.28);
+      }
+      .grid-v {
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+      }
+      .grid-h {
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 1px;
+      }
+      .tag {
+        position: absolute;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        background: rgba(9, 14, 20, 0.72);
+        color: #eaf2ff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .tl {
+        top: 16px;
+        left: 16px;
+      }
+      .tr {
+        top: 16px;
+        right: 16px;
+      }
+      .bl {
+        bottom: 16px;
+        left: 16px;
+      }
+      .br {
+        bottom: 16px;
+        right: 16px;
+      }
+      .caption {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        font-size: 14px;
+        color: #9db2c9;
+        border-top: 1px solid #1e2b3a;
+      }
+      .caption strong {
+        color: #eaf2ff;
+        font-weight: 650;
+      }
+      .pill {
+        font-size: 12.5px;
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.16);
+        border: 1px solid rgba(42, 143, 122, 0.4);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="frame">
+        <canvas id="scene" width="1280" height="720"></canvas>
+        <div class="grid-v"></div>
+        <div class="grid-h"></div>
+        <span class="tag tl">Albedo</span>
+        <span class="tag tr">Normals</span>
+        <span class="tag bl">Depth</span>
+        <span class="tag br">Deferred lighting</span>
+      </div>
+      <div class="caption">
+        <span
+          ><strong>Multiple render targets</strong> — one pass writes albedo, normals & depth; a
+          lighting pass reads them back</span
+        >
+        <span class="pill">MultiTarget · 3 attachments · drawBuffers</span>
+      </div>
+    </div>
+
+    <script type="module">
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+      import { MultiTarget } from "../../dist/fbo.js";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl2");
+      if (gl === null) throw new Error("WebGL2 is not available.");
+
+      const W = 640;
+      const H = 360;
+
+      const quad = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+      });
+
+      const VERT = `#version 300 es
+        in vec2 position;
+        out vec2 uv;
+        void main() { uv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }`;
+
+      const geometryProgram = program(
+        VERT,
+        `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        layout(location = 0) out vec4 outAlbedo;
+        layout(location = 1) out vec4 outNormal;
+        layout(location = 2) out vec4 outDepth;
+
+        void main() {
+          vec2 centers[3];
+          float radii[3];
+          float depths[3];
+          vec3 colors[3];
+          centers[0] = vec2(0.37, 0.5); radii[0] = 0.30; depths[0] = 0.42; colors[0] = vec3(0.96, 0.4, 0.38);
+          centers[1] = vec2(0.6, 0.44); radii[1] = 0.22; depths[1] = 0.28; colors[1] = vec3(0.38, 0.72, 0.98);
+          centers[2] = vec2(0.7, 0.66); radii[2] = 0.17; depths[2] = 0.16; colors[2] = vec3(0.6, 0.9, 0.55);
+
+          vec3 albedo = vec3(0.05, 0.06, 0.09);
+          vec3 normal = vec3(0.0, 0.0, 1.0);
+          float depth = 0.0;
+          float best = 2.0;
+
+          for (int i = 0; i < 3; i++) {
+            vec2 d = (uv - centers[i]) * vec2(1.777, 1.0);
+            float k = length(d) / radii[i];
+            if (k < 1.0 && depths[i] < best) {
+              best = depths[i];
+              float nz = sqrt(max(0.0, 1.0 - k * k));
+              normal = normalize(vec3(d / radii[i], nz));
+              albedo = colors[i];
+              depth = 1.0 - depths[i];
+            }
+          }
+
+          outAlbedo = vec4(albedo, 1.0);
+          outNormal = vec4(normal * 0.5 + 0.5, 1.0);
+          outDepth = vec4(vec3(depth), 1.0);
+        }`
+      );
+
+      const showProgram = program(
+        VERT,
+        `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        out vec4 frag;
+        uniform sampler2D tex;
+        void main() { frag = texture(tex, uv); }`
+      );
+
+      const lightingProgram = program(
+        VERT,
+        `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        out vec4 frag;
+        uniform sampler2D albedoTex;
+        uniform sampler2D normalTex;
+        void main() {
+          vec3 albedo = texture(albedoTex, uv).rgb;
+          vec3 n = normalize(texture(normalTex, uv).rgb * 2.0 - 1.0);
+          vec3 L = normalize(vec3(0.35, 0.45, 0.82));
+          float diff = max(dot(n, L), 0.0);
+          float rim = pow(1.0 - max(n.z, 0.0), 2.0) * 0.25;
+          frag = vec4(albedo * (0.16 + diff) + rim, 1.0);
+        }`
+      );
+
+      const gbuffer = new MultiTarget(gl, { width: W, height: H, attachments: 3 });
+
+      // One geometry pass writes all three attachments at once.
+      gbuffer.withBound(() => {
+        gl.viewport(0, 0, W, H);
+        draw(geometryProgram);
+      });
+
+      // Show each attachment in a quadrant; deferred lighting reads them back.
+      gl.viewport(0, H, W, H); // top-left: albedo
+      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[0], 0));
+
+      gl.viewport(W, H, W, H); // top-right: normals
+      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[1], 0));
+
+      gl.viewport(0, 0, W, H); // bottom-left: depth
+      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[2], 0));
+
+      gl.viewport(W, 0, W, H); // bottom-right: deferred lighting
+      draw(lightingProgram, (p) => {
+        p.setTexture("albedoTex", gbuffer.textures[0], 0);
+        p.setTexture("normalTex", gbuffer.textures[1], 1);
+      });
+
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+
+      function draw(prog, configure) {
+        prog.withUsed(() => {
+          if (configure) configure(prog);
+          prog.enableAttribute("position", { buffer: quad, size: 2 });
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        });
+      }
+
+      function program(vertexSource, fragmentSource) {
+        return new Program(gl, {
+          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
+          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
+        });
+      }
+    </script>
+  </body>
+</html>

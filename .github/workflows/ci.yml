@@ -102,5 +102,8 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Build
+        run: pnpm build
+
       - name: Regenerate screenshots
         run: pnpm screenshots
