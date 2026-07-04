@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — full pipeline</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0d1722;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="scene" width="1280" height="720"></canvas>
+
+    <script type="module">
+      // Exercises every wrapper together:
+      //   Texture2D (procedural source) -> Framebuffer (offscreen pass) ->
+      //   Program.setTexture (screen pass), with Shader, GLBuffer, and the
+      //   uniform / attribute helpers throughout.
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+      import { Texture2D } from "../../dist/texture.js";
+      import { Framebuffer } from "../../dist/fbo.js";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl");
+      if (gl === null) {
+        throw new Error("WebGL is not available in this browser.");
+      }
+
+      const fullscreenQuad = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+      });
+
+      // A small procedural checker texture uploaded from raw pixel data.
+      const checker = new Uint8Array(4 * 4 * 4);
+      for (let y = 0; y < 4; y += 1) {
+        for (let x = 0; x < 4; x += 1) {
+          const on = (x + y) % 2 === 0;
+          const i = (y * 4 + x) * 4;
+          checker[i] = on ? 240 : 40;
+          checker[i + 1] = on ? 180 : 60;
+          checker[i + 2] = on ? 90 : 120;
+          checker[i + 3] = 255;
+        }
+      }
+      const sourceTexture = new Texture2D(gl, {
+        width: 4,
+        height: 4,
+        data: checker,
+        minFilter: gl.NEAREST,
+        magFilter: gl.NEAREST
+      });
+
+      const sceneProgram = createScreenProgram(`
+        precision mediump float;
+        uniform sampler2D source;
+        uniform float time;
+        varying vec2 uv;
+        void main() {
+          vec2 warped = uv + 0.03 * vec2(sin(uv.y * 12.0 + time), cos(uv.x * 12.0 + time));
+          gl_FragColor = texture2D(source, warped);
+        }
+      `);
+
+      const screenProgram = createScreenProgram(`
+        precision mediump float;
+        uniform sampler2D source;
+        varying vec2 uv;
+        void main() {
+          vec3 color = texture2D(source, uv).rgb;
+          float vignette = smoothstep(1.1, 0.3, distance(uv, vec2(0.5)));
+          gl_FragColor = vec4(color * vignette, 1.0);
+        }
+      `);
+
+      const offscreen = new Framebuffer(gl, {
+        width: canvas.width,
+        height: canvas.height
+      });
+
+      render();
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+
+      function render() {
+        // Pass 1: sample the source texture into the offscreen target.
+        offscreen.withBound(() => {
+          gl.viewport(0, 0, offscreen.width, offscreen.height);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          drawFullscreen(sceneProgram, (program) => {
+            program.setTexture("source", sourceTexture, 0);
+            program.setUniform1f("time", 1.2);
+          });
+        });
+
+        // Pass 2: composite the offscreen texture to the screen.
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        drawFullscreen(screenProgram, (program) => {
+          program.setTexture("source", offscreen.texture, 0);
+        });
+      }
+
+      function drawFullscreen(program, configure) {
+        program.withUsed(() => {
+          program.enableAttribute("position", { buffer: fullscreenQuad, size: 2 });
+          configure(program);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        });
+      }
+
+      function createScreenProgram(fragmentSource) {
+        return new Program(gl, {
+          vertexShader: new Shader(gl, {
+            type: gl.VERTEX_SHADER,
+            source: `
+              attribute vec2 position;
+              varying vec2 uv;
+              void main() {
+                uv = position * 0.5 + 0.5;
+                gl_Position = vec4(position, 0.0, 1.0);
+              }
+            `
+          }),
+          fragmentShader: new Shader(gl, {
+            type: gl.FRAGMENT_SHADER,
+            source: fragmentSource
+          })
+        });
+      }
+    </script>
+  </body>
+</html>

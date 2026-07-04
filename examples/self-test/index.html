@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>webgraphiclibrary — browser self-test</title>
+  </head>
+  <body>
+    <pre id="log">Running…</pre>
+
+    <script type="module">
+      // Exercises the built package against a real WebGL context and reports
+      // the results on window.__WGL_RESULT__ for scripts/check-browser.mjs.
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+      import { Texture2D, readTexturePixels } from "../../dist/texture.js";
+      import { Framebuffer, MultiTarget, MultisampleTarget } from "../../dist/fbo.js";
+      import { WebGLError } from "../../dist/core.js";
+
+      const failures = [];
+      const check = (name, condition, detail = "") => {
+        if (!condition) failures.push(`${name}${detail ? `: ${detail}` : ""}`);
+      };
+
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 4;
+        canvas.height = 4;
+        const gl = canvas.getContext("webgl");
+        if (gl === null) throw new Error("WebGL is not available.");
+
+        // Framebuffer: render a known color and read it back.
+        const target = new Framebuffer(gl, { width: 2, height: 2 });
+        target.withBound(() => {
+          gl.viewport(0, 0, 2, 2);
+          gl.clearColor(1, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+        });
+        const pixels = new Uint8Array(2 * 2 * 4);
+        target.readPixelsInto(pixels);
+        check(
+          "framebuffer readback is red",
+          pixels[0] === 255 && pixels[1] === 0 && pixels[2] === 0 && pixels[3] === 255,
+          `[${pixels[0]}, ${pixels[1]}, ${pixels[2]}, ${pixels[3]}]`
+        );
+        check("readPixels allocates the right size", target.readPixels().length === 16);
+
+        // Binding restoration: the default framebuffer stays bound afterwards.
+        check("framebuffer binding restored", gl.getParameter(gl.FRAMEBUFFER_BINDING) === null);
+        target.dispose();
+        check(
+          "use-after-dispose throws",
+          throws(() => target.bind())
+        );
+
+        // Texture2D from raw data, read back through a temporary framebuffer.
+        const dataTexture = new Texture2D(gl, {
+          width: 1,
+          height: 1,
+          data: new Uint8Array([10, 20, 30, 255])
+        });
+        const texel = readTexturePixels(gl, dataTexture);
+        check(
+          "texture data round-trips",
+          texel[0] === 10 && texel[1] === 20 && texel[2] === 30 && texel[3] === 255,
+          `[${texel[0]}, ${texel[1]}, ${texel[2]}, ${texel[3]}]`
+        );
+        dataTexture.dispose();
+
+        // Texture2D.uploadImage from a canvas.
+        const source = document.createElement("canvas");
+        source.width = 2;
+        source.height = 2;
+        const ctx = source.getContext("2d");
+        ctx.fillStyle = "rgb(0, 255, 0)";
+        ctx.fillRect(0, 0, 2, 2);
+        const imageTexture = new Texture2D(gl, { width: 1, height: 1 });
+        imageTexture.uploadImage(source);
+        check("uploadImage tracks size", imageTexture.width === 2 && imageTexture.height === 2);
+        const uploaded = readTexturePixels(gl, imageTexture);
+        check(
+          "uploaded canvas is green",
+          uploaded[0] === 0 && uploaded[1] === 255 && uploaded[2] === 0,
+          `[${uploaded[0]}, ${uploaded[1]}, ${uploaded[2]}]`
+        );
+        imageTexture.dispose();
+
+        // Shader compile errors throw WebGLError.
+        check(
+          "shader compile error throws WebGLError",
+          throws(
+            () => new Shader(gl, { type: gl.FRAGMENT_SHADER, source: "void main() { not valid }" }),
+            (error) => error instanceof WebGLError
+          )
+        );
+
+        // A real program draws a known color that reads back correctly.
+        const program = new Program(gl, {
+          vertexShader: new Shader(gl, {
+            type: gl.VERTEX_SHADER,
+            source:
+              "attribute vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }"
+          }),
+          fragmentShader: new Shader(gl, {
+            type: gl.FRAGMENT_SHADER,
+            source:
+              "precision mediump float; uniform vec3 color; void main() { gl_FragColor = vec4(color, 1.0); }"
+          })
+        });
+        const quad = new GLBuffer(gl, {
+          target: gl.ARRAY_BUFFER,
+          data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+        });
+        const drawTarget = new Framebuffer(gl, { width: 2, height: 2 });
+        drawTarget.withBound(() => {
+          gl.viewport(0, 0, 2, 2);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          program.withUsed(() => {
+            program.setUniform3f("color", 0, 0, 1);
+            program.enableAttribute("position", { buffer: quad, size: 2 });
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          });
+        });
+        const drawn = drawTarget.readPixels();
+        check(
+          "program draws blue",
+          drawn[0] === 0 && drawn[1] === 0 && drawn[2] === 255,
+          `[${drawn[0]}, ${drawn[1]}, ${drawn[2]}]`
+        );
+
+        program.dispose();
+        quad.dispose();
+        drawTarget.dispose();
+
+        // MultiTarget (WebGL2 MRT): render distinct colors to two attachments
+        // and read each back.
+        const gl2Canvas = document.createElement("canvas");
+        gl2Canvas.width = 2;
+        gl2Canvas.height = 2;
+        const gl2 = gl2Canvas.getContext("webgl2");
+        if (gl2 !== null) {
+          const mrt = new MultiTarget(gl2, { width: 2, height: 2, attachments: 2 });
+          check("MRT creates two attachment textures", mrt.textures.length === 2);
+
+          const mrtProgram = new Program(gl2, {
+            vertexShader: new Shader(gl2, {
+              type: gl2.VERTEX_SHADER,
+              source: `#version 300 es
+                in vec2 position;
+                void main() { gl_Position = vec4(position, 0.0, 1.0); }`
+            }),
+            fragmentShader: new Shader(gl2, {
+              type: gl2.FRAGMENT_SHADER,
+              source: `#version 300 es
+                precision mediump float;
+                layout(location = 0) out vec4 target0;
+                layout(location = 1) out vec4 target1;
+                void main() {
+                  target0 = vec4(1.0, 0.0, 0.0, 1.0);
+                  target1 = vec4(0.0, 0.0, 1.0, 1.0);
+                }`
+            })
+          });
+          const mrtQuad = new GLBuffer(gl2, {
+            target: gl2.ARRAY_BUFFER,
+            data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+          });
+
+          mrt.withBound(() => {
+            gl2.viewport(0, 0, 2, 2);
+            gl2.clear(gl2.COLOR_BUFFER_BIT);
+            mrtProgram.withUsed(() => {
+              mrtProgram.enableAttribute("position", { buffer: mrtQuad, size: 2 });
+              gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+            });
+          });
+
+          const attachment0 = mrt.readPixels(0);
+          const attachment1 = mrt.readPixels(1);
+          check(
+            "MRT attachment 0 is red",
+            attachment0[0] === 255 && attachment0[1] === 0 && attachment0[2] === 0,
+            `[${attachment0[0]}, ${attachment0[1]}, ${attachment0[2]}]`
+          );
+          check(
+            "MRT attachment 1 is blue",
+            attachment1[0] === 0 && attachment1[1] === 0 && attachment1[2] === 255,
+            `[${attachment1[0]}, ${attachment1[1]}, ${attachment1[2]}]`
+          );
+
+          mrt.dispose();
+          mrtProgram.dispose();
+          mrtQuad.dispose();
+
+          // MultisampleTarget: render, resolve via blit, and read back.
+          const msaa = new MultisampleTarget(gl2, { width: 4, height: 4, samples: 4 });
+          msaa.withBound(() => {
+            gl2.viewport(0, 0, 4, 4);
+            gl2.clearColor(0, 1, 0, 1);
+            gl2.clear(gl2.COLOR_BUFFER_BIT);
+          });
+          msaa.resolve();
+          const resolved = msaa.readPixels();
+          check(
+            "MSAA resolves to green",
+            resolved[0] === 0 && resolved[1] === 255 && resolved[2] === 0,
+            `[${resolved[0]}, ${resolved[1]}, ${resolved[2]}]`
+          );
+          msaa.dispose();
+        }
+      } catch (error) {
+        failures.push(`threw: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      function throws(fn, predicate = () => true) {
+        try {
+          fn();
+          return false;
+        } catch (error) {
+          return predicate(error);
+        }
+      }
+
+      document.querySelector("#log").textContent =
+        failures.length === 0 ? "All browser assertions passed." : failures.join("\n");
+      window.__WGL_RESULT__ = { failures };
+    </script>
+  </body>
+</html>

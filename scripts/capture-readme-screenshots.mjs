@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { chromium } from "playwright";
+import { resolveStaticFilePath } from "./static-server-path.mjs";
 
 const root = process.cwd();
 const outputDir = join(root, "docs", "screenshots");
@@ -203,20 +204,16 @@ function extractDemoSnippet(source) {
 async function startStaticServer(root) {
   const server = createServer((request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
-    const pathname = decodeURIComponent(requestUrl.pathname);
 
-    if (pathname === "/favicon.ico") {
+    if (requestUrl.pathname === "/favicon.ico") {
       response.writeHead(204);
       response.end();
       return;
     }
 
-    const filePath = join(
-      root,
-      pathname === "/" ? "examples/fbo-postprocess/index.html" : pathname
-    );
+    const filePath = resolveStaticFilePath(root, requestUrl.pathname);
 
-    if (!filePath.startsWith(root) || !existsSync(filePath)) {
+    if (filePath === null || !existsSync(filePath)) {
       response.writeHead(404);
       response.end("Not found");
       return;

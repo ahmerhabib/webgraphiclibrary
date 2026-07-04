@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — color-id picking</title>
+    <style>
+      body {
+        margin: 0;
+        background: #0d1722;
+        color: #d7f3ff;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+      }
+      main {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        gap: 12px;
+      }
+      canvas {
+        border-radius: 8px;
+        cursor: crosshair;
+      }
+      #readout {
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <canvas id="scene" width="600" height="360"></canvas>
+      <p id="readout">Move the mouse over a shape to read back its id.</p>
+    </main>
+
+    <script type="module">
+      // Renders three quads into an offscreen id buffer, then reads back a
+      // single pixel with readPixelsInto (no per-frame allocation) to identify
+      // the shape under the cursor.
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+      import { Framebuffer } from "../../dist/fbo.js";
+
+      const canvas = document.querySelector("#scene");
+      const readout = document.querySelector("#readout");
+      const gl = canvas.getContext("webgl");
+      if (gl === null) {
+        throw new Error("WebGL is not available in this browser.");
+      }
+
+      const program = new Program(gl, {
+        vertexShader: new Shader(gl, {
+          type: gl.VERTEX_SHADER,
+          source: `
+            attribute vec2 position;
+            uniform vec2 offset;
+            void main() {
+              gl_Position = vec4(position * 0.28 + offset, 0.0, 1.0);
+            }
+          `
+        }),
+        fragmentShader: new Shader(gl, {
+          type: gl.FRAGMENT_SHADER,
+          source: `
+            precision mediump float;
+            uniform vec3 idColor;
+            void main() {
+              gl_FragColor = vec4(idColor, 1.0);
+            }
+          `
+        })
+      });
+
+      const quad = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+      });
+
+      const shapes = [
+        { id: 1, offset: [-0.55, 0.0], color: [1, 0, 0] },
+        { id: 2, offset: [0.0, 0.0], color: [0, 1, 0] },
+        { id: 3, offset: [0.55, 0.0], color: [0, 0, 1] }
+      ];
+
+      const idTarget = new Framebuffer(gl, { width: canvas.width, height: canvas.height });
+      const pixel = new Uint8Array(4);
+
+      draw();
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+
+      canvas.addEventListener("mousemove", (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvas.width);
+        const y = Math.floor((1 - (event.clientY - rect.top) / rect.height) * canvas.height);
+        readout.textContent = `id at (${x}, ${y}): ${idAt(x, y)}`;
+      });
+
+      function draw() {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        idTarget.withBound(() => {
+          gl.clearColor(0, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          renderShapes((shape) => shape.color);
+        });
+
+        gl.clearColor(0.05, 0.09, 0.14, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        renderShapes((shape) => shape.color);
+      }
+
+      function renderShapes(colorFor) {
+        program.withUsed(() => {
+          program.enableAttribute("position", { buffer: quad, size: 2 });
+          for (const shape of shapes) {
+            program.setUniform2f("offset", shape.offset[0], shape.offset[1]);
+            const color = colorFor(shape);
+            program.setUniform3f("idColor", color[0], color[1], color[2]);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          }
+        });
+      }
+
+      function idAt(x, y) {
+        idTarget.withBound(() => gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel));
+        const match = shapes.find(
+          (shape) =>
+            Math.round(shape.color[0]) * 255 === pixel[0] &&
+            Math.round(shape.color[1]) * 255 === pixel[1] &&
+            Math.round(shape.color[2]) * 255 === pixel[2]
+        );
+        return match ? match.id : "background";
+      }
+    </script>
+  </body>
+</html>

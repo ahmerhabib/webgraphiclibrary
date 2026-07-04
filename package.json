@@ -22,10 +22,7 @@
     "dist",
     "README.md",
     "LICENSE.md",
-    "CHANGELOG.md",
-    "docs/assets",
-    "docs/screenshots",
-    "examples"
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
@@ -39,6 +36,22 @@
     "./fbo": {
       "types": "./dist/fbo.d.ts",
       "import": "./dist/fbo.js"
+    },
+    "./shader": {
+      "types": "./dist/shader.d.ts",
+      "import": "./dist/shader.js"
+    },
+    "./program": {
+      "types": "./dist/program.d.ts",
+      "import": "./dist/program.js"
+    },
+    "./buffer": {
+      "types": "./dist/buffer.d.ts",
+      "import": "./dist/buffer.js"
+    },
+    "./texture": {
+      "types": "./dist/texture.d.ts",
+      "import": "./dist/texture.js"
     }
   },
   "scripts": {
@@ -52,8 +65,10 @@
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "screenshots": "node scripts/capture-readme-screenshots.mjs",
-    "pack:check": "npm pack --dry-run",
-    "verify": "pnpm format:check && pnpm screenshots && pnpm pack:check"
+    "pack:check": "npm --cache /tmp/webgraphiclibrary-npm-cache pack --dry-run",
+    "check:package": "node scripts/check-package.mjs",
+    "check:browser": "node scripts/check-browser.mjs",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:package"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -68,6 +83,11 @@
     "typescript-eslint": "^8.49.0",
     "vitest": "^3.2.4"
   },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "^0.28.1"
+    }
+  },
   "packageManager": "pnpm@10.33.0",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -75,6 +95,9 @@
     "webgl",
     "framebuffer",
     "fbo",
+    "shader",
+    "texture",
+    "buffer",
     "graphics",
     "rendering",
     "typescript",
