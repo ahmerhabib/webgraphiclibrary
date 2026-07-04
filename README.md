@@ -209,11 +209,12 @@ scripts            Package verification and screenshot tooling
 
 ## Roadmap
 
-- Multiple render targets (MRT) and multisample resolve (blit) for deferred and anti-aliased off-screen rendering
 - Uniform block / UBO helpers and a small optional math utility
-- Real-browser (Playwright) rendering tests alongside the mock unit suite
-- Per-module documentation pages and a live examples gallery
+- Transform feedback and vertex-array (VAO) wrappers
+- A live examples gallery
 - Investigate a backend-portable surface so a WebGPU path can be added without an API break
+
+Recently shipped: WebGL2 multiple render targets (`MultiTarget`) and multisample resolve (`MultisampleTarget`), real-browser render tests, and per-module documentation.
 
 ## Contributing
 

@@ -14,7 +14,7 @@ What each capability requires. "WebGL1" means core WebGL 1; "WebGL2" means a Web
 | Instanced attributes (`divisor`)  | No                                                    | Yes                                 | `enableAttribute({ divisor })` throws on WebGL1                  |
 | `invalidateFramebuffer`           | No                                                    | Yes                                 | `Framebuffer.invalidate` throws on WebGL1                        |
 | Compressed textures               | Not wrapped                                           | Not wrapped                         | Use the raw handle + `compressedTexImage2D`                      |
-| Multisample renderbuffers / blit  | Not wrapped                                           | Not wrapped                         | On the roadmap                                                   |
-| Multiple render targets (MRT)     | Not wrapped                                           | Not wrapped                         | On the roadmap                                                   |
+| Multisample renderbuffers / blit  | No                                                    | Yes (`MultisampleTarget`)           | Render, then `resolve()` blits into a sampleable texture         |
+| Multiple render targets (MRT)     | No                                                    | Yes (`MultiTarget`)                 | Several sampleable color attachments wired with `drawBuffers`    |
 
 Anything not wrapped is still reachable: every resource exposes its raw handle (`framebuffer.framebuffer`, `texture.texture`, …) so you can drop to raw WebGL where needed.

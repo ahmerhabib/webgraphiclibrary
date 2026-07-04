@@ -11,3 +11,9 @@ export type {
   MultiTargetOptions,
   MultiTargetResizeOptions
 } from "./multi-target";
+export { MultisampleTarget } from "./multisample-target";
+export type {
+  MultisampleTargetCanvasSize,
+  MultisampleTargetOptions,
+  MultisampleTargetResizeOptions
+} from "./multisample-target";

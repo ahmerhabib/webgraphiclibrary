@@ -61,6 +61,7 @@ program.withUsed(() => {
 
 ## Further reading
 
+- [Advanced render targets](./advanced-targets.md) — WebGL2 multiple render targets and multisample resolve.
 - [Support matrix](./support-matrix.md) — what each module supports on WebGL1 vs WebGL2.
 - [Comparison](./comparison.md) — how webgraphiclibrary relates to twgl.js, regl, picogl.js, OGL, and luma.gl.
 - [examples/](../examples) — runnable browser examples.

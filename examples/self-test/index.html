@@ -14,7 +14,7 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { Texture2D, readTexturePixels } from "../../dist/texture.js";
-      import { Framebuffer, MultiTarget } from "../../dist/fbo.js";
+      import { Framebuffer, MultiTarget, MultisampleTarget } from "../../dist/fbo.js";
       import { WebGLError } from "../../dist/core.js";
 
       const failures = [];
@@ -191,6 +191,22 @@
           mrt.dispose();
           mrtProgram.dispose();
           mrtQuad.dispose();
+
+          // MultisampleTarget: render, resolve via blit, and read back.
+          const msaa = new MultisampleTarget(gl2, { width: 4, height: 4, samples: 4 });
+          msaa.withBound(() => {
+            gl2.viewport(0, 0, 4, 4);
+            gl2.clearColor(0, 1, 0, 1);
+            gl2.clear(gl2.COLOR_BUFFER_BIT);
+          });
+          msaa.resolve();
+          const resolved = msaa.readPixels();
+          check(
+            "MSAA resolves to green",
+            resolved[0] === 0 && resolved[1] === 255 && resolved[2] === 0,
+            `[${resolved[0]}, ${resolved[1]}, ${resolved[2]}]`
+          );
+          msaa.dispose();
         }
       } catch (error) {
         failures.push(`threw: ${error instanceof Error ? error.message : String(error)}`);

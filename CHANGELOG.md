@@ -12,6 +12,7 @@ All notable changes to this package are documented here.
 - `Texture2D` image/canvas/video uploads (`uploadImage` and the `image` option), `flipY` / `premultiplyAlpha` options, and `generateMipmap`.
 - Allocation-free readback: `Framebuffer.readPixelsInto` and `readTexturePixelsInto`.
 - `Framebuffer.invalidate` (WebGL2) and automatic float/half-float color-buffer extension enabling.
+- WebGL2 `MultiTarget` (multiple render targets) and `MultisampleTarget` (multisample render + blit resolve).
 - Shared `withSavedBindings` primitive exported from `core`.
 - Real-browser render tests (`pnpm check:browser`), a packaged-export/tarball check (`pnpm check:package`), and additional examples (minimal-triangle, pipeline, picking, self-test).
 - Documentation: rewritten README plus per-module reference pages, a support matrix, and a comparison page.
