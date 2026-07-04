@@ -2,355 +2,241 @@
 
 [![CI](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/webgraphiclibrary?tag=beta)](https://www.npmjs.com/package/webgraphiclibrary)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/webgraphiclibrary?tag=beta)](https://bundlephobia.com/package/webgraphiclibrary)
+[![types](https://img.shields.io/npm/types/webgraphiclibrary)](https://www.typescriptlang.org/)
 [![license](https://img.shields.io/npm/l/webgraphiclibrary)](LICENSE.md)
 
-Small, type-safe WebGL utilities for developers building custom rendering pipelines.
+**Typed WebGL resource wrappers for people who write their own render loop.**
 
-webgraphiclibrary is not a scene graph, charting system, game engine, or Three.js replacement. It is a focused set of typed wrappers around WebGL resources that are repetitive to set up, easy to leak, and painful to debug when one line is wrong.
-
-The current beta includes focused wrappers for framebuffers, shaders, programs, buffers, textures, and texture readback. Each module gives one WebGL resource a small lifecycle API while keeping raw handles available when your renderer needs direct control.
+webgraphiclibrary gives each repetitive, leak-prone WebGL resource — framebuffers, shaders, programs, buffers, and textures — a small, strongly-typed lifecycle API, then gets out of your way. No scene graph. No materials. No hidden global state. You keep the raw `WebGL*` handles and your own draw calls; the library removes the boilerplate that is easy to get subtly wrong and painful to debug.
 
 ![Framebuffer workflow](docs/assets/fbo-workflow.png)
 
-## Why Use It
+```ts
+import { Framebuffer } from "webgraphiclibrary/fbo";
 
-Choose webgraphiclibrary when you want to stay close to WebGL but stop rewriting the same resource boilerplate.
+const target = new Framebuffer(gl, { width: 1024, height: 1024, depth: true });
 
-| If you need...                                                                 | Use...                 |
-| ------------------------------------------------------------------------------ | ---------------------- |
-| A full 3D scene graph, loaders, cameras, controls, and materials               | Three.js or Babylon.js |
-| A high-level 2D canvas object model                                            | Konva or Fabric.js     |
-| A production whiteboard or infinite canvas SDK                                 | tldraw or Excalidraw   |
-| Charts and data visualization                                                  | D3 or Chart.js         |
-| Small WebGL resource wrappers for custom engines, effects, demos, and teaching | webgraphiclibrary      |
+target.withBound(() => {
+  gl.viewport(0, 0, target.width, target.height);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  drawScene(); // your raw WebGL, unchanged
+});
 
-## Features
+// target.texture now holds the rendered image — sample it in a fullscreen pass.
+gl.bindTexture(gl.TEXTURE_2D, target.texture);
+```
 
-- Typed ESM package with explicit subpath exports.
-- `Framebuffer` wrapper for color render targets backed by `WebGLTexture`.
-- `Shader` and `Program` wrappers for compile/link workflows and lookup errors.
-- `GLBuffer` wrapper for typed vertex/index buffer uploads.
-- `Texture2D` wrapper for texture allocation, upload, and disposal.
-- `readTexturePixels` helper for texture inspection through a temporary framebuffer.
-- Optional framebuffer depth or depth-stencil renderbuffer storage.
-- Early validation for dimensions, WebGL contexts, resource allocation, and framebuffer completeness.
-- Explicit lifecycle methods: `bind`, `withBound`, `resize`, `resizeToCanvas`, `readPixels`, and `dispose`.
-- Raw WebGL handles exposed for direct rendering pipeline integration.
-- Idempotent disposal and typed WebGL errors.
-- Browser demo and README screenshots generated from the real build workflow.
+## Why webgraphiclibrary
+
+Hand-written WebGL is not hard because the ideas are hard — it is hard because every resource has a create → configure → bind → use → restore → delete lifecycle, all of it mutating one big global state machine, and one wrong enum gives you a black screen with no error. This library encodes that lifecycle once, with types, so your renderer stays readable.
+
+- **Strictly typed, TypeScript-first.** Written in TypeScript with precise types and full declarations — not JS with generated `.d.ts` bolted on.
+- **Tree-shakeable by resource.** Import exactly what you use through per-resource subpaths (`webgraphiclibrary/fbo`, `webgraphiclibrary/texture`, …). Pay only for the resource you touch.
+- **State-restoration guarantees.** Every helper that must bind a resource captures the previous binding and restores it in a `finally` — so a resize or a readback never silently breaks the renderer that called it.
+- **Explicit lifecycle, raw handles kept.** `bind` / `withBound` / `resize` / `dispose`, idempotent disposal, typed errors — and `framebuffer.texture`, `program.program`, `buffer.buffer` are always right there when you need direct control.
+- **Zero runtime dependencies.** Small, auditable, ESM-only.
+
+### When to use it (and when not)
+
+| If you need…                                                      | Use…                   |
+| ----------------------------------------------------------------- | ---------------------- |
+| A 3D scene graph, cameras, materials, loaders, controls           | Three.js or Babylon.js |
+| A fast 2D scene graph for games / interactive canvases            | PixiJS                 |
+| A high-level 2D object model or whiteboard SDK                    | Konva, Fabric, tldraw  |
+| Charts and data visualization                                     | D3 or Chart.js         |
+| **Typed WebGL building blocks for a renderer you write yourself** | **webgraphiclibrary**  |
+
+Its real neighbors are the low-level WebGL helpers — `twgl.js`, `regl`, `picogl.js`, `OGL`, `luma.gl`:
+
+| Library               | Category                | TS-native | Tree-shake by resource | Notes                                       |
+| --------------------- | ----------------------- | :-------: | :--------------------: | ------------------------------------------- |
+| **webgraphiclibrary** | Typed resource wrappers |    Yes    |          Yes           | Explicit lifecycle, state-restoration, tiny |
+| twgl.js               | WebGL helper functions  |   JSDoc   |           No           | Great ergonomics; JS with generated types   |
+| regl                  | Declarative commands    | community |           No           | Stateless & elegant; WebGL1 only            |
+| picogl.js             | WebGL2 resource objects | ships JS  |        Partial         | Closest model; low recent activity          |
+| OGL                   | Mini scene graph        |  add-on   |           No           | Higher-level than a wrapper                 |
+
+> **On WebGL vs WebGPU.** WebGPU is now the forward-looking default and WebGL2 is the stable fallback. webgraphiclibrary targets WebGL/WebGL2 deliberately: teaching, shader effects, embeddable widgets, demos, and custom renderers that must run everywhere today. The public API avoids leaking context-specific types where it can, so a future backend can be added without breaking callers.
 
 ## Install
 
 ```bash
 npm install webgraphiclibrary@beta
-```
-
-```bash
+# or
 pnpm add webgraphiclibrary@beta
 ```
 
-## Quick Start
+ESM only. Requires a bundler or native ES modules and a `WebGLRenderingContext` or `WebGL2RenderingContext`.
+
+## Quick start
+
+A full off-screen pass, using the resource wrappers together:
 
 ```ts
+import { Shader } from "webgraphiclibrary/shader";
+import { Program } from "webgraphiclibrary/program";
+import { GLBuffer } from "webgraphiclibrary/buffer";
 import { Framebuffer } from "webgraphiclibrary/fbo";
 
-const canvas = document.querySelector("canvas");
-if (!(canvas instanceof HTMLCanvasElement)) {
-  throw new Error("Canvas element was not found.");
-}
+const gl = canvas.getContext("webgl2");
+if (gl === null) throw new Error("WebGL2 is not available.");
 
-const gl = canvas.getContext("webgl");
-if (gl === null) {
-  throw new Error("WebGL is not available.");
-}
-
-const target = new Framebuffer(gl, {
-  width: canvas.width,
-  height: canvas.height,
-  depth: true
+// Compile + link with clear, annotated errors on failure.
+const program = new Program(gl, {
+  vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
+  fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
 });
 
-target.withBound(() => {
-  gl.viewport(0, 0, target.width, target.height);
-  gl.clearColor(0, 0, 0, 1);
+// Upload geometry.
+const quad = new GLBuffer(gl, {
+  target: gl.ARRAY_BUFFER,
+  data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+});
+
+// Off-screen color target with depth.
+const scene = new Framebuffer(gl, { width: 1024, height: 1024, depth: true });
+
+scene.withBound(() => {
+  gl.viewport(0, 0, scene.width, scene.height);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  // Draw the off-screen scene here.
+  program.withUsed(() => {
+    program
+      .setUniform2f("resolution", scene.width, scene.height)
+      .setUniform1f("time", performance.now() / 1000)
+      .enableAttribute("position", { buffer: quad, size: 2 });
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  });
 });
 
-gl.viewport(0, 0, canvas.width, canvas.height);
-gl.bindTexture(gl.TEXTURE_2D, target.texture);
-
-// Draw a fullscreen pass and sample target.texture in your fragment shader.
-
-target.dispose();
+// `scene.texture` holds the result — feed it into a screen-space pass.
 ```
 
-## Common Workflows
+## Real-world workflows
 
-### Post-Processing
+### Post-processing
 
-Render a scene into a `Framebuffer`, then sample `framebuffer.texture` in a fullscreen pass for blur, color grading, distortion, scanlines, or custom compositing.
+Render a scene into a `Framebuffer`, then sample `framebuffer.texture` in a fullscreen pass for blur, color grading, distortion, scanlines, or compositing. See [examples/fbo-postprocess](examples/fbo-postprocess).
 
-See [examples/fbo-postprocess](examples/fbo-postprocess).
+![FBO post-process demo](docs/screenshots/fbo-postprocess-demo.png)
 
-![Rendered framebuffer post-process demo](docs/screenshots/fbo-postprocess-demo.png)
+### Picking and readback
 
-### Picking and Readback
-
-Render object IDs or encoded values into an off-screen target, then call `readPixels()` to inspect the result.
+Render encoded object IDs into an off-screen target and read back a pixel — without a fresh allocation every frame:
 
 ```ts
-const pixels = pickingTarget.readPixels();
-const firstPixel = pixels.slice(0, 4);
+const pixel = new Uint8Array(4);
+pickTarget.withBound(() => renderIds());
+pickTarget.readPixelsInto(pixel); // reuse the same buffer each frame
+const id = pixel[0] | (pixel[1] << 8) | (pixel[2] << 16);
 ```
 
-### Responsive Render Targets
-
-Keep off-screen targets aligned with a canvas backing store.
+### Textures from images, canvas, or video
 
 ```ts
-target.resizeToCanvas(canvas);
-```
-
-### Resource Wrappers
-
-Compile shaders, link a program, upload vertex data, and allocate a texture without giving up direct WebGL access.
-
-```ts
-import { GLBuffer } from "webgraphiclibrary/buffer";
-import { Program } from "webgraphiclibrary/program";
-import { Shader } from "webgraphiclibrary/shader";
 import { Texture2D } from "webgraphiclibrary/texture";
 
-const vertexShader = new Shader(gl, {
-  type: gl.VERTEX_SHADER,
-  source: vertexSource
-});
-
-const fragmentShader = new Shader(gl, {
-  type: gl.FRAGMENT_SHADER,
-  source: fragmentSource
-});
-
-const program = new Program(gl, {
-  vertexShader,
-  fragmentShader
-});
-
-const vertices = new GLBuffer(gl, {
-  target: gl.ARRAY_BUFFER,
-  data: new Float32Array([-1, -1, 1, -1, -1, 1]),
-  usage: gl.STATIC_DRAW
-});
-
 const texture = new Texture2D(gl, {
-  width: 256,
-  height: 256
+  width: 1,
+  height: 1,
+  image: await createImageBitmap(await (await fetch("/tile.png")).blob()),
+  flipY: true
 });
+
+texture.generateMipmap();
+
+// Later, stream video frames into the same texture:
+texture.uploadImage(videoElement);
 ```
 
-## Imports
+### Resize-safe render targets
+
+```ts
+function frame() {
+  if (canvas.width !== target.width || canvas.height !== target.height) {
+    target.resizeToCanvas(canvas); // reallocates + revalidates, restores bindings
+  }
+  // ...draw...
+}
+```
+
+## API at a glance
+
+Import from the root or from a per-resource subpath — both are tree-shakeable.
 
 ```ts
 import { Framebuffer, FBO } from "webgraphiclibrary/fbo";
 import { Shader } from "webgraphiclibrary/shader";
 import { Program } from "webgraphiclibrary/program";
 import { GLBuffer } from "webgraphiclibrary/buffer";
-import { Texture2D, readTexturePixels } from "webgraphiclibrary/texture";
-import { WebGLError, DisposedResourceError } from "webgraphiclibrary/core";
+import { Texture2D, readTexturePixels, readTexturePixelsInto } from "webgraphiclibrary/texture";
+import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphiclibrary/core";
 ```
 
-Current subpath exports:
+| Module      | Exports                                                            | Highlights                                                                                      |
+| ----------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `…/fbo`     | `Framebuffer` (`FBO` alias)                                        | color texture + optional depth/stencil, `withBound`, `resize`, `readPixels(Into)`, `invalidate` |
+| `…/shader`  | `Shader`                                                           | compile with stage-annotated, source-numbered errors                                            |
+| `…/program` | `Program`                                                          | link, `withUsed`, cached uniform lookups, typed `setUniform*` / `setTexture`, `enableAttribute` |
+| `…/buffer`  | `GLBuffer`                                                         | typed uploads, `withBound`, `updateSubData` partial writes                                      |
+| `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                        |
+| `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                             |
 
-- `webgraphiclibrary`
-- `webgraphiclibrary/buffer`
-- `webgraphiclibrary/core`
-- `webgraphiclibrary/fbo`
-- `webgraphiclibrary/program`
-- `webgraphiclibrary/shader`
-- `webgraphiclibrary/texture`
+Per-module option/property/method tables live in [docs/](docs/) — see [docs/getting-started.md](docs/getting-started.md).
 
-## Framebuffer API
+### Error behavior
 
-### Constructor
-
-```ts
-const target = new Framebuffer(gl, {
-  width: 1024,
-  height: 1024,
-  depth: true
-});
-```
-
-| Option           | Type      | Default            | Notes                                              |
-| ---------------- | --------- | ------------------ | -------------------------------------------------- |
-| `width`          | `number`  | required           | Positive integer width in pixels                   |
-| `height`         | `number`  | required           | Positive integer height in pixels                  |
-| `internalFormat` | `number`  | `gl.RGBA`          | Texture internal format                            |
-| `format`         | `number`  | `gl.RGBA`          | Texture data format                                |
-| `type`           | `number`  | `gl.UNSIGNED_BYTE` | Texture data type                                  |
-| `minFilter`      | `number`  | `gl.LINEAR`        | Texture minification filter                        |
-| `magFilter`      | `number`  | `gl.LINEAR`        | Texture magnification filter                       |
-| `wrapS`          | `number`  | `gl.CLAMP_TO_EDGE` | Horizontal texture wrapping                        |
-| `wrapT`          | `number`  | `gl.CLAMP_TO_EDGE` | Vertical texture wrapping                          |
-| `depth`          | `boolean` | `false`            | Adds `DEPTH_COMPONENT16` renderbuffer storage      |
-| `stencil`        | `boolean` | `false`            | Adds combined `DEPTH_STENCIL` renderbuffer storage |
-
-### Properties
-
-| Property       | Type                                              | Notes                             |
-| -------------- | ------------------------------------------------- | --------------------------------- |
-| `gl`           | `WebGLRenderingContext \| WebGL2RenderingContext` | Context passed to the constructor |
-| `width`        | `number`                                          | Current framebuffer width         |
-| `height`       | `number`                                          | Current framebuffer height        |
-| `framebuffer`  | `WebGLFramebuffer`                                | Underlying framebuffer object     |
-| `texture`      | `WebGLTexture`                                    | Color attachment texture          |
-| `renderbuffer` | `WebGLRenderbuffer \| null`                       | Depth or depth-stencil storage    |
-| `disposed`     | `boolean`                                         | `true` after disposal             |
-
-### Methods
-
-| Method                      | Purpose                                                    |
-| --------------------------- | ---------------------------------------------------------- |
-| `bind()`                    | Bind this framebuffer as the active draw/read target       |
-| `unbind()`                  | Bind the default screen framebuffer                        |
-| `withBound(render)`         | Bind, run a callback, and unbind in a `finally` block      |
-| `resize({ width, height })` | Reallocate texture and renderbuffer storage                |
-| `resizeToCanvas(canvas)`    | Resize to a canvas backing-store size                      |
-| `readPixels()`              | Read RGBA pixels into a `Uint8Array`                       |
-| `dispose()`                 | Delete the framebuffer, texture, and optional renderbuffer |
-
-`FBO` is exported as a compatibility alias for `Framebuffer`.
-
-## Error Behavior
-
-The library throws early for:
-
-- non-WebGL context values
-- non-integer or non-positive dimensions
-- failed WebGL resource allocation
-- incomplete framebuffer status
-- use after `dispose()`
-
-Base WebGL failures extend `WebGLError`. Use-after-dispose failures throw `DisposedResourceError`.
-
-## Other Resource APIs
-
-| Module                      | Primary exports                    | Purpose                                                   |
-| --------------------------- | ---------------------------------- | --------------------------------------------------------- |
-| `webgraphiclibrary/shader`  | `Shader`                           | Compile a WebGL shader and clean up on compile failure    |
-| `webgraphiclibrary/program` | `Program`                          | Link vertex/fragment shaders and resolve uniforms/attribs |
-| `webgraphiclibrary/buffer`  | `GLBuffer`                         | Upload typed array data or allocate buffer storage        |
-| `webgraphiclibrary/texture` | `Texture2D`, `readTexturePixels`   | Allocate/upload textures and inspect texture pixels       |
-| `webgraphiclibrary/core`    | `WebGLError`, validation utilities | Shared errors and low-level guards                        |
-
-## Project Snapshots
-
-These screenshots are generated by `pnpm screenshots` from the current build and demo.
-
-![Scoped framebuffer code snippet](docs/screenshots/code-snippet.png)
-
-![Release verification terminal](docs/screenshots/terminal-verification.png)
-
-Suggested next media additions:
-
-- `docs/screenshots/fbo-resize.gif`: resize a canvas and show the off-screen target updating.
-- `docs/screenshots/read-pixels.gif`: demonstrate a simple picking/readback workflow.
-- `docs/screenshots/debug-texture.png`: show a texture inspection helper in a real render pipeline.
+The library throws early and specifically for: non-WebGL context values, non-integer or non-positive dimensions, failed resource allocation, incomplete framebuffers, and use-after-`dispose()`. Base failures extend `WebGLError`; use-after-dispose throws `DisposedResourceError`. Shader compile errors include the stage and the numbered source with the failing line marked.
 
 ## Architecture
 
-The package is a small workspace with private implementation packages and one public npm package.
+A small pnpm workspace whose modules build into one published package with per-resource subpath exports.
 
 ```text
-packages/core      Shared WebGL context checks, dimension validation, and error types
-packages/fbo       Framebuffer resource wrapper and tests
-packages/shader    Shader compile wrapper and tests
-packages/program   Program link and lookup wrapper and tests
-packages/buffer    Typed buffer upload wrapper and tests
-packages/texture   Texture allocation and readback wrapper and tests
-examples           Browser examples that consume the built public package
-docs/assets        Static diagrams and generated screenshots
-scripts            Playwright screenshot and release-verification tooling
-dist               Published ESM and TypeScript declaration output
+packages/core      Context checks, dimension guards, typed errors, binding save/restore
+packages/fbo       Framebuffer resource wrapper
+packages/shader    Shader compile wrapper
+packages/program   Program link + uniform/attribute helpers
+packages/buffer    Typed buffer upload wrapper
+packages/texture   Texture allocation, image upload, and readback
+examples           Browser examples that consume the built package
+scripts            Package verification and screenshot tooling
 ```
 
-The root package exposes compiled modules through `exports`:
-
-```json
-{
-  ".": "./dist/index.js",
-  "./buffer": "./dist/buffer.js",
-  "./core": "./dist/core.js",
-  "./fbo": "./dist/fbo.js",
-  "./program": "./dist/program.js",
-  "./shader": "./dist/shader.js",
-  "./texture": "./dist/texture.js"
-}
-```
-
-## Development
-
-```bash
-pnpm install
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm verify
-```
-
-`pnpm verify` is the release gate. It checks formatting, regenerates screenshots, runs linting, type checking, tests, and build through `prepublishOnly`, then inspects the npm package contents.
-
-## Release
-
-The beta package is published to npm as:
-
-```bash
-npm install webgraphiclibrary@beta
-```
-
-For release steps, see [docs/release.md](docs/release.md).
+`withSavedBindings(gl, slots, op)` in `core` is the shared primitive behind the state-restoration guarantees: it captures the relevant binding points, runs your operation, and restores them in a `finally`.
 
 ## Roadmap
 
-The v2 line is rebuilding earlier WebGraphicLibrary packages as small, typed WebGL resource modules.
-
-Next planned work:
-
-- richer uniform setter helpers
-- attribute layout helpers for `GLBuffer`
-- texture display and debugging examples
-- WebGL2-first framebuffer options, including multisample renderbuffers and multiple render targets
-- benchmarks and package-size comparison docs
-
-Sprite helpers are intentionally outside the first v2 scope. They fit better as examples built on top of lower-level primitives.
+- Multiple render targets (MRT) and multisample resolve (blit) for deferred and anti-aliased off-screen rendering
+- Uniform block / UBO helpers and a small optional math utility
+- Real-browser (Playwright) rendering tests alongside the mock unit suite
+- Per-module documentation pages and a live examples gallery
+- Investigate a backend-portable surface so a WebGPU path can be added without an API break
 
 ## Contributing
 
 Contributions should keep the library close to WebGL, typed, and easy to inspect.
 
-Before opening a pull request:
-
 ```bash
-pnpm verify
+pnpm install
+pnpm verify   # format, lint, typecheck, test, build, packaged-export check
 ```
 
-Contribution guidelines:
+Guidelines:
 
-- Keep APIs focused on one WebGL resource or workflow.
-- Prefer explicit lifecycle methods over hidden global state.
-- Preserve access to raw WebGL handles.
-- Add tests for validation, lifecycle behavior, error paths, and WebGL state restoration.
-- Update examples, screenshots, and the README when public behavior changes.
+- Keep each API focused on one WebGL resource or workflow.
+- Prefer explicit lifecycle methods over hidden global state; preserve access to raw handles.
+- Add tests for validation, lifecycle, error paths, and WebGL state restoration.
+- Update examples and docs when public behavior changes.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 
-webgraphiclibrary is a local rendering utility package. It does not make network requests, store credentials, or process server-side user input.
-
-Please report security issues through GitHub Issues with a minimal reproduction and affected package version. See [SECURITY.md](SECURITY.md).
+webgraphiclibrary is a client-side rendering utility: it makes no network requests, stores no credentials, and processes no server-side input. Please report vulnerabilities through GitHub private vulnerability reporting — see [SECURITY.md](SECURITY.md).
 
 ## License
 
-MIT
+[MIT](LICENSE.md)

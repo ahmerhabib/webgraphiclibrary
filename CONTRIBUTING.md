@@ -9,7 +9,7 @@ pnpm install
 pnpm verify
 ```
 
-`pnpm verify` runs the same practical gate expected before release: formatting check, linting, type checking, tests, build, screenshot regeneration, and an npm package dry-run.
+`pnpm verify` runs the same gate as CI: formatting check, linting, type checking, tests, build, and a packaged-export check (`pnpm check:package`) that verifies every dist subpath and installs the packed tarball into a temporary project. Screenshot regeneration (`pnpm screenshots`) is a separate, browser-dependent step and is not part of the gate.
 
 ## Development standards
 
