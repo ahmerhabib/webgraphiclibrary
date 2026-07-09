@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>webgraphiclibrary — architecture</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1017;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: 1280px;
+        box-sizing: border-box;
+        padding: 40px 44px 36px;
+        border-radius: 14px;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+        color: #eaf2ff;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 4px;
+      }
+      .subtitle {
+        margin: 0 0 32px;
+        color: #9db2c9;
+        font-size: 15px;
+      }
+      .flow {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+      }
+      .node {
+        flex: 1;
+        border: 1px solid #263a4e;
+        border-radius: 12px;
+        background: #101d2b;
+        padding: 18px 18px 16px;
+        min-height: 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .node.accent {
+        border-color: rgba(42, 143, 122, 0.6);
+        background: linear-gradient(180deg, rgba(42, 143, 122, 0.16), rgba(42, 143, 122, 0.05));
+      }
+      .node .k {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #7f97ad;
+      }
+      .node .n {
+        font-size: 17px;
+        font-weight: 650;
+      }
+      .node .d {
+        font-size: 13px;
+        color: #9db2c9;
+        line-height: 1.35;
+      }
+      .conn {
+        flex: 0 0 118px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding-top: 34px;
+      }
+      .conn code {
+        font-size: 12.5px;
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.14);
+        border: 1px solid rgba(42, 143, 122, 0.34);
+        padding: 3px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .conn .line {
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, #2f4256, #4d6a86);
+        position: relative;
+      }
+      .conn .line::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: -4px;
+        border: 5px solid transparent;
+        border-left-color: #4d6a86;
+      }
+      .lifecycle {
+        margin-top: 34px;
+        border-top: 1px solid #1e2b3a;
+        padding-top: 26px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .lifecycle .lab {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #7f97ad;
+        margin-right: 4px;
+      }
+      .chip {
+        font-size: 14px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: #101d2b;
+        border: 1px solid #263a4e;
+      }
+      .sep {
+        color: #4d6a86;
+        font-size: 16px;
+      }
+      .foot {
+        margin: 20px 0 0;
+        font-size: 13.5px;
+        color: #9db2c9;
+      }
+      .foot b {
+        color: #eaf2ff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p class="title">Render-to-texture pipeline</p>
+      <p class="subtitle">
+        You own the draw loop; the wrappers own each resource's lifecycle and restore global state.
+      </p>
+
+      <div class="flow">
+        <div class="node">
+          <span class="k">Input</span>
+          <span class="n">canvas + gl</span>
+          <span class="d">WebGL / WebGL2 context and your own draw calls</span>
+        </div>
+        <div class="conn">
+          <code>withBound()</code>
+          <div class="line"></div>
+        </div>
+        <div class="node accent">
+          <span class="k">Off-screen</span>
+          <span class="n">Framebuffer</span>
+          <span class="d">color texture + optional depth / stencil</span>
+        </div>
+        <div class="conn">
+          <code>.texture</code>
+          <div class="line"></div>
+        </div>
+        <div class="node">
+          <span class="k">Sample</span>
+          <span class="n">screen / post pass</span>
+          <span class="d">Program.setTexture reads the result</span>
+        </div>
+        <div class="conn">
+          <code>drawArrays</code>
+          <div class="line"></div>
+        </div>
+        <div class="node">
+          <span class="k">Output</span>
+          <span class="n">display</span>
+          <span class="d">composited to the default framebuffer</span>
+        </div>
+      </div>
+
+      <div class="lifecycle">
+        <span class="lab">Resource lifecycle</span>
+        <span class="chip">create</span>
+        <span class="sep">→</span>
+        <span class="chip">bind / withBound</span>
+        <span class="sep">→</span>
+        <span class="chip">use</span>
+        <span class="sep">→</span>
+        <span class="chip">restore</span>
+        <span class="sep">→</span>
+        <span class="chip">dispose</span>
+      </div>
+      <p class="foot">
+        <b>State-restoration guarantee:</b> every helper captures the bindings it touches and
+        restores them in a <code>finally</code>, via <code>withSavedBindings</code> in
+        <code>core</code>.
+      </p>
+    </div>
+
+    <script>
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+    </script>
+  </body>
+</html>

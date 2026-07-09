@@ -10,7 +10,7 @@
 
 webgraphiclibrary gives each repetitive, leak-prone WebGL resource — framebuffers, shaders, programs, buffers, and textures — a small, strongly-typed lifecycle API, then gets out of your way. No scene graph. No materials. No hidden global state. You keep the raw `WebGL*` handles and your own draw calls; the library removes the boilerplate that is easy to get subtly wrong and painful to debug.
 
-![Framebuffer workflow](docs/assets/fbo-workflow.png)
+![Real-time bloom post-processing built from five framebuffers](docs/screenshots/postprocessing-demo.png)
 
 ```ts
 import { Framebuffer } from "webgraphiclibrary/fbo";
@@ -58,6 +58,22 @@ Its real neighbors are the low-level WebGL helpers — `twgl.js`, `regl`, `picog
 | OGL                   | Mini scene graph        |  add-on   |           No           | Higher-level than a wrapper                 |
 
 > **On WebGL vs WebGPU.** WebGPU is now the forward-looking default and WebGL2 is the stable fallback. webgraphiclibrary targets WebGL/WebGL2 deliberately: teaching, shader effects, embeddable widgets, demos, and custom renderers that must run everywhere today. The public API avoids leaking context-specific types where it can, so a future backend can be added without breaking callers.
+
+## Showcase
+
+Every image below is real output from the [examples](examples), captured in a headless browser — no mock-ups.
+
+**Multiple render targets** — one geometry pass fills a `MultiTarget` (albedo, normals, depth); a lighting pass reads them back for deferred shading.
+
+![MRT G-buffer showing albedo, normals, depth, and deferred lighting](docs/screenshots/gbuffer-demo.png)
+
+**Multisample anti-aliasing** — render into a `MultisampleTarget`, then `resolve()` blits it to a sampleable texture. Same geometry, aliased vs. resolved:
+
+![Multisample resolve comparison: aliased edges next to 4× MSAA](docs/screenshots/antialiasing-demo.png)
+
+**Color-id picking** — draw ids into an off-screen `Framebuffer` and read one pixel back to identify the shape under the cursor:
+
+![Color-id picking: the hovered shape highlighted with its id read back via readPixelsInto](docs/screenshots/picking-demo.png)
 
 ## Install
 
@@ -114,13 +130,88 @@ scene.withBound(() => {
 // `scene.texture` holds the result — feed it into a screen-space pass.
 ```
 
+## Tutorial
+
+Two short steps take you from a single triangle to a full off-screen post-processing pipeline. Each step is a complete, runnable page — the full sources are in [examples/](examples).
+
+### 1. Draw your first triangle
+
+Compile a shader pair into a `Program`, upload vertices into a `GLBuffer`, and let the uniform and attribute helpers wire it all up:
+
+```ts
+import { Shader } from "webgraphiclibrary/shader";
+import { Program } from "webgraphiclibrary/program";
+import { GLBuffer } from "webgraphiclibrary/buffer";
+
+const gl = canvas.getContext("webgl");
+if (gl === null) throw new Error("WebGL is not available.");
+
+const program = new Program(gl, {
+  vertexShader: new Shader(gl, {
+    type: gl.VERTEX_SHADER,
+    source: `attribute vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }`
+  }),
+  fragmentShader: new Shader(gl, {
+    type: gl.FRAGMENT_SHADER,
+    source: `precision mediump float; uniform vec3 color; void main() { gl_FragColor = vec4(color, 1.0); }`
+  })
+});
+
+const geometry = new GLBuffer(gl, {
+  target: gl.ARRAY_BUFFER,
+  data: new Float32Array([0, 0.8, -0.8, -0.8, 0.8, -0.8])
+});
+
+program.withUsed(() => {
+  program.setUniform3f("color", 0.16, 0.72, 0.62);
+  program.enableAttribute("position", { buffer: geometry, size: 2 });
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+});
+```
+
+![A single triangle rendered with the resource wrappers](docs/screenshots/minimal-triangle-demo.png)
+
+Full source: [examples/minimal-triangle](examples/minimal-triangle).
+
+### 2. Render off-screen, then post-process
+
+Add a `Texture2D` as input, render it into a `Framebuffer` with a distortion shader, then composite the result to the screen with `program.setTexture` — every module working together:
+
+```ts
+import { Texture2D } from "webgraphiclibrary/texture";
+import { Framebuffer } from "webgraphiclibrary/fbo";
+
+const source = new Texture2D(gl, { width: 4, height: 4, data: checkerPixels });
+const offscreen = new Framebuffer(gl, { width: canvas.width, height: canvas.height });
+
+// Pass 1: warp the source texture into the off-screen target.
+offscreen.withBound(() => {
+  gl.viewport(0, 0, offscreen.width, offscreen.height);
+  warpProgram.withUsed(() => {
+    warpProgram.setTexture("source", source, 0).setUniform1f("time", 1.2);
+    warpProgram.enableAttribute("position", { buffer: quad, size: 2 });
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  });
+});
+
+// Pass 2: composite the off-screen texture to the screen.
+gl.viewport(0, 0, canvas.width, canvas.height);
+screenProgram.withUsed(() => {
+  screenProgram.setTexture("source", offscreen.texture, 0);
+  screenProgram.enableAttribute("position", { buffer: quad, size: 2 });
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+});
+```
+
+The result is the bloom pass shown at the [top of this page](#webgraphiclibrary).
+
+Full source: [examples/postprocessing](examples/postprocessing). For anti-aliased off-screen rendering and G-buffers, see [`MultisampleTarget` and `MultiTarget`](docs/advanced-targets.md).
+
 ## Real-world workflows
 
 ### Post-processing
 
-Render a scene into a `Framebuffer`, then sample `framebuffer.texture` in a fullscreen pass for blur, color grading, distortion, scanlines, or compositing. See [examples/fbo-postprocess](examples/fbo-postprocess).
-
-![FBO post-process demo](docs/screenshots/fbo-postprocess-demo.png)
+Render a scene into a `Framebuffer`, then sample `framebuffer.texture` in a fullscreen pass for blur, color grading, distortion, scanlines, or compositing. See [examples/postprocessing](examples/postprocessing).
 
 ### Picking and readback
 
@@ -175,14 +266,14 @@ import { Texture2D, readTexturePixels, readTexturePixelsInto } from "webgraphicl
 import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphiclibrary/core";
 ```
 
-| Module      | Exports                                                            | Highlights                                                                                      |
-| ----------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `…/fbo`     | `Framebuffer` (`FBO` alias)                                        | color texture + optional depth/stencil, `withBound`, `resize`, `readPixels(Into)`, `invalidate` |
-| `…/shader`  | `Shader`                                                           | compile with stage-annotated, source-numbered errors                                            |
-| `…/program` | `Program`                                                          | link, `withUsed`, cached uniform lookups, typed `setUniform*` / `setTexture`, `enableAttribute` |
-| `…/buffer`  | `GLBuffer`                                                         | typed uploads, `withBound`, `updateSubData` partial writes                                      |
-| `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                        |
-| `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                             |
+| Module      | Exports                                                            | Highlights                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `…/fbo`     | `Framebuffer` (`FBO`), `MultiTarget`, `MultisampleTarget`          | off-screen color target (+ depth/stencil), `withBound`/`resize`/`readPixels(Into)`/`invalidate`; WebGL2 multiple render targets and multisample resolve |
+| `…/shader`  | `Shader`                                                           | compile with stage-annotated, source-numbered errors                                                                                                    |
+| `…/program` | `Program`                                                          | link, `withUsed`, cached uniform lookups, typed `setUniform*` / `setTexture`, `enableAttribute`                                                         |
+| `…/buffer`  | `GLBuffer`                                                         | typed uploads, `withBound`, `updateSubData` partial writes                                                                                              |
+| `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                                                                                |
+| `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                                                                                     |
 
 Per-module option/property/method tables live in [docs/](docs/) — see [docs/getting-started.md](docs/getting-started.md).
 
@@ -194,9 +285,11 @@ The library throws early and specifically for: non-WebGL context values, non-int
 
 A small pnpm workspace whose modules build into one published package with per-resource subpath exports.
 
+![Render-to-texture pipeline and the resource lifecycle](docs/screenshots/architecture-demo.png)
+
 ```text
 packages/core      Context checks, dimension guards, typed errors, binding save/restore
-packages/fbo       Framebuffer resource wrapper
+packages/fbo       Framebuffer, MultiTarget, MultisampleTarget
 packages/shader    Shader compile wrapper
 packages/program   Program link + uniform/attribute helpers
 packages/buffer    Typed buffer upload wrapper

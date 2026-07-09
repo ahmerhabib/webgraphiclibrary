@@ -5,132 +5,237 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>webgraphiclibrary — color-id picking</title>
     <style>
-      body {
-        margin: 0;
-        background: #0d1722;
-        color: #d7f3ff;
-        font:
-          14px/1.4 system-ui,
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
           sans-serif;
       }
-      main {
+      body {
+        margin: 0;
+        background: #0b1017;
         display: grid;
         place-items: center;
         min-height: 100vh;
-        gap: 12px;
+      }
+      .card {
+        width: 960px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+      .frame {
+        position: relative;
+        line-height: 0;
       }
       canvas {
-        border-radius: 8px;
+        display: block;
+        width: 960px;
+        height: 420px;
         cursor: crosshair;
       }
-      #readout {
-        font-variant-numeric: tabular-nums;
+      .callout {
+        position: absolute;
+        transform: translate(-50%, -140%);
+        padding: 7px 12px;
+        border-radius: 10px;
+        font-size: 13.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        background: #eaf2ff;
+        color: #0d1520;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      .callout::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 100%;
+        transform: translateX(-50%);
+        border: 7px solid transparent;
+        border-top-color: #eaf2ff;
+      }
+      .callout code {
+        color: #2a6f8f;
+        font-weight: 700;
+      }
+      .dot {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+      }
+      .caption {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        font-size: 14px;
+        color: #9db2c9;
+        border-top: 1px solid #1e2b3a;
+      }
+      .caption strong {
+        color: #eaf2ff;
+        font-weight: 650;
+      }
+      .pill {
+        font-size: 12.5px;
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.16);
+        border: 1px solid rgba(42, 143, 122, 0.4);
+        padding: 4px 10px;
+        border-radius: 999px;
       }
     </style>
   </head>
   <body>
-    <main>
-      <canvas id="scene" width="600" height="360"></canvas>
-      <p id="readout">Move the mouse over a shape to read back its id.</p>
-    </main>
+    <div class="card">
+      <div class="frame">
+        <canvas id="scene" width="960" height="420"></canvas>
+        <div class="dot" id="dot"></div>
+        <div class="callout" id="callout">
+          <code>readPixelsInto()</code> → id <span id="idValue">–</span>
+        </div>
+      </div>
+      <div class="caption">
+        <span
+          ><strong>Picking</strong> — draw ids into an off-screen target, read one pixel back to
+          identify the shape under the cursor</span
+        >
+        <span class="pill">Framebuffer · readPixelsInto · 1&nbsp;px</span>
+      </div>
+    </div>
 
     <script type="module">
-      // Renders three quads into an offscreen id buffer, then reads back a
-      // single pixel with readPixelsInto (no per-frame allocation) to identify
-      // the shape under the cursor.
       import { Shader } from "../../dist/shader.js";
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { Framebuffer } from "../../dist/fbo.js";
 
       const canvas = document.querySelector("#scene");
-      const readout = document.querySelector("#readout");
-      const gl = canvas.getContext("webgl");
-      if (gl === null) {
-        throw new Error("WebGL is not available in this browser.");
-      }
+      const callout = document.querySelector("#callout");
+      const dot = document.querySelector("#dot");
+      const idValue = document.querySelector("#idValue");
+      const gl = canvas.getContext("webgl2");
+      if (gl === null) throw new Error("WebGL2 is not available.");
 
-      const program = new Program(gl, {
-        vertexShader: new Shader(gl, {
-          type: gl.VERTEX_SHADER,
-          source: `
-            attribute vec2 position;
-            uniform vec2 offset;
-            void main() {
-              gl_Position = vec4(position * 0.28 + offset, 0.0, 1.0);
-            }
-          `
-        }),
-        fragmentShader: new Shader(gl, {
-          type: gl.FRAGMENT_SHADER,
-          source: `
-            precision mediump float;
-            uniform vec3 idColor;
-            void main() {
-              gl_FragColor = vec4(idColor, 1.0);
-            }
-          `
-        })
-      });
+      const W = canvas.width;
+      const H = canvas.height;
+      const SCALE = `vec2(${(W / H).toFixed(4)}, 1.0)`;
+      const SHAPES = `
+        const vec2 CENTERS[5] = vec2[](
+          vec2(0.16, 0.5), vec2(0.35, 0.62), vec2(0.52, 0.38), vec2(0.68, 0.6), vec2(0.85, 0.46)
+        );
+        const float RADII[5] = float[](0.17, 0.14, 0.13, 0.15, 0.12);
+        const vec3 COLORS[5] = vec3[](
+          vec3(0.96, 0.42, 0.42), vec3(0.4, 0.76, 0.98), vec3(0.62, 0.9, 0.5),
+          vec3(0.78, 0.55, 1.0), vec3(0.98, 0.82, 0.36)
+        );`;
 
       const quad = new GLBuffer(gl, {
         target: gl.ARRAY_BUFFER,
         data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
       });
 
-      const shapes = [
-        { id: 1, offset: [-0.55, 0.0], color: [1, 0, 0] },
-        { id: 2, offset: [0.0, 0.0], color: [0, 1, 0] },
-        { id: 3, offset: [0.55, 0.0], color: [0, 0, 1] }
-      ];
+      const VERT = `#version 300 es
+        in vec2 position;
+        out vec2 uv;
+        void main() { uv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }`;
 
-      const idTarget = new Framebuffer(gl, { width: canvas.width, height: canvas.height });
+      const idProgram = program(
+        VERT,
+        `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        out vec4 frag;
+        ${SHAPES}
+        void main() {
+          float id = 0.0;
+          for (int i = 0; i < 5; i++) {
+            if (length((uv - CENTERS[i]) * ${SCALE}) < RADII[i]) id = float(i + 1);
+          }
+          frag = vec4(id / 255.0, 0.0, 0.0, 1.0);
+        }`
+      );
+
+      const viewProgram = program(
+        VERT,
+        `#version 300 es
+        precision highp float;
+        in vec2 uv;
+        out vec4 frag;
+        uniform float selected;
+        ${SHAPES}
+        void main() {
+          vec3 col = mix(vec3(0.04, 0.05, 0.09), vec3(0.06, 0.08, 0.14), uv.y);
+          for (int i = 0; i < 5; i++) {
+            float d = length((uv - CENTERS[i]) * ${SCALE});
+            col = mix(col, COLORS[i], smoothstep(RADII[i], RADII[i] - 0.003, d));
+            if (float(i + 1) == selected) {
+              col = mix(col, vec3(1.0), smoothstep(0.014, 0.0, abs(d - RADII[i] - 0.012)));
+            }
+          }
+          frag = vec4(col, 1.0);
+        }`
+      );
+
+      const idTarget = new Framebuffer(gl, { width: W, height: H });
       const pixel = new Uint8Array(4);
 
-      draw();
+      // Render the id buffer once; it only changes when the scene changes.
+      idTarget.withBound(() => {
+        gl.viewport(0, 0, W, H);
+        draw(idProgram);
+      });
+
+      pick(Math.round(0.68 * W), Math.round(0.6 * H));
       window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
 
       canvas.addEventListener("mousemove", (event) => {
         const rect = canvas.getBoundingClientRect();
-        const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvas.width);
-        const y = Math.floor((1 - (event.clientY - rect.top) / rect.height) * canvas.height);
-        readout.textContent = `id at (${x}, ${y}): ${idAt(x, y)}`;
+        pick(
+          Math.round(((event.clientX - rect.left) / rect.width) * W),
+          Math.round((1 - (event.clientY - rect.top) / rect.height) * H)
+        );
       });
 
-      function draw() {
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        idTarget.withBound(() => {
-          gl.clearColor(0, 0, 0, 1);
-          gl.clear(gl.COLOR_BUFFER_BIT);
-          renderShapes((shape) => shape.color);
-        });
+      function pick(gx, gy) {
+        idTarget.withBound(() => gl.readPixels(gx, gy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel));
+        const id = pixel[0];
 
-        gl.clearColor(0.05, 0.09, 0.14, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        renderShapes((shape) => shape.color);
+        gl.viewport(0, 0, W, H);
+        draw(viewProgram, (p) => p.setUniform1f("selected", id));
+
+        idValue.textContent = id === 0 ? "— (background)" : String(id);
+        const cssX = (gx / W) * 100;
+        const cssY = (1 - gy / H) * 100;
+        callout.style.left = `${cssX}%`;
+        callout.style.top = `${cssY}%`;
+        dot.style.left = `${cssX}%`;
+        dot.style.top = `${cssY}%`;
       }
 
-      function renderShapes(colorFor) {
-        program.withUsed(() => {
-          program.enableAttribute("position", { buffer: quad, size: 2 });
-          for (const shape of shapes) {
-            program.setUniform2f("offset", shape.offset[0], shape.offset[1]);
-            const color = colorFor(shape);
-            program.setUniform3f("idColor", color[0], color[1], color[2]);
-            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-          }
+      function draw(prog, configure) {
+        prog.withUsed(() => {
+          if (configure) configure(prog);
+          prog.enableAttribute("position", { buffer: quad, size: 2 });
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         });
       }
-
-      function idAt(x, y) {
-        idTarget.withBound(() => gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel));
-        const match = shapes.find(
-          (shape) =>
-            Math.round(shape.color[0]) * 255 === pixel[0] &&
-            Math.round(shape.color[1]) * 255 === pixel[1] &&
-            Math.round(shape.color[2]) * 255 === pixel[2]
-        );
-        return match ? match.id : "background";
+      function program(vertexSource, fragmentSource) {
+        return new Program(gl, {
+          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
+          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
+        });
       }
     </script>
   </body>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — multisample resolve</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1017;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: 1280px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+      .frame {
+        position: relative;
+        line-height: 0;
+      }
+      canvas {
+        display: block;
+        width: 1280px;
+        height: 512px;
+      }
+      .divider {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: 1px;
+        background: rgba(255, 255, 255, 0.35);
+      }
+      .tag {
+        position: absolute;
+        top: 16px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        background: rgba(9, 14, 20, 0.72);
+        color: #eaf2ff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .tag.left {
+        left: 16px;
+      }
+      .tag.right {
+        right: 16px;
+      }
+      .caption {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        font-size: 14px;
+        color: #9db2c9;
+        border-top: 1px solid #1e2b3a;
+      }
+      .caption strong {
+        color: #eaf2ff;
+        font-weight: 650;
+      }
+      .pill {
+        font-size: 12.5px;
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.16);
+        border: 1px solid rgba(42, 143, 122, 0.4);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="frame">
+        <canvas id="scene" width="1280" height="512"></canvas>
+        <div class="divider"></div>
+        <span class="tag left">No MSAA — aliased edges</span>
+        <span class="tag right">4× MSAA — resolve()</span>
+      </div>
+      <div class="caption">
+        <span
+          ><strong>Multisampling</strong> — render into a multisampled buffer, then
+          <code>resolve()</code> blits it to a sampleable texture</span
+        >
+        <span class="pill">MultisampleTarget · samples: 4 · blit</span>
+      </div>
+    </div>
+
+    <script type="module">
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer } from "../../dist/buffer.js";
+      import { Framebuffer, MultisampleTarget } from "../../dist/fbo.js";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl2");
+      if (gl === null) throw new Error("WebGL2 is not available.");
+
+      const HALF = 640;
+      const H = 512;
+      const LOW_W = 240;
+      const LOW_H = 192;
+      const aspect = LOW_W / LOW_H;
+
+      // Pinwheel geometry: lots of diagonal edges to expose aliasing.
+      const blades = 9;
+      const verts = [];
+      const R = 0.94;
+      for (let i = 0; i < blades; i += 1) {
+        const a0 = (i / blades) * Math.PI * 2;
+        const a1 = a0 + ((Math.PI * 2) / blades) * 0.6;
+        verts.push(0, 0, Math.cos(a0) * R, Math.sin(a0) * R, Math.cos(a1) * R, Math.sin(a1) * R);
+      }
+      const pinwheel = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array(verts)
+      });
+      const quad = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+      });
+
+      const shapeProgram = program(
+        `#version 300 es
+          in vec2 position;
+          uniform float aspect;
+          void main() { gl_Position = vec4(position.x / aspect, position.y, 0.0, 1.0); }`,
+        `#version 300 es
+          precision highp float;
+          out vec4 frag;
+          void main() { frag = vec4(0.36, 0.86, 0.78, 1.0); }`
+      );
+
+      const showProgram = program(
+        `#version 300 es
+          in vec2 position;
+          out vec2 uv;
+          void main() { uv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }`,
+        `#version 300 es
+          precision highp float;
+          in vec2 uv;
+          out vec4 frag;
+          uniform sampler2D tex;
+          void main() { frag = texture(tex, uv); }`
+      );
+
+      // NEAREST so the up-scaled comparison shows individual pixels.
+      const plain = new Framebuffer(gl, {
+        width: LOW_W,
+        height: LOW_H,
+        minFilter: gl.NEAREST,
+        magFilter: gl.NEAREST
+      });
+      const msaa = new MultisampleTarget(gl, {
+        width: LOW_W,
+        height: LOW_H,
+        samples: 4,
+        minFilter: gl.NEAREST,
+        magFilter: gl.NEAREST
+      });
+
+      // Render the same shape with and without multisampling.
+      plain.withBound(() => {
+        gl.viewport(0, 0, LOW_W, LOW_H);
+        clear();
+        drawShape();
+      });
+      msaa.withBound(() => {
+        gl.viewport(0, 0, LOW_W, LOW_H);
+        clear();
+        drawShape();
+      });
+      msaa.resolve();
+
+      // Display each, magnified, side by side.
+      gl.viewport(0, 0, HALF, H);
+      blit(plain.texture);
+      gl.viewport(HALF, 0, HALF, H);
+      blit(msaa.texture);
+
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+
+      function clear() {
+        gl.clearColor(0.05, 0.06, 0.09, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      function drawShape() {
+        shapeProgram.withUsed(() => {
+          shapeProgram.setUniform1f("aspect", aspect);
+          shapeProgram.enableAttribute("position", { buffer: pinwheel, size: 2 });
+          gl.drawArrays(gl.TRIANGLES, 0, blades * 3);
+        });
+      }
+      function blit(texture) {
+        showProgram.withUsed(() => {
+          showProgram.setTexture("tex", texture, 0);
+          showProgram.enableAttribute("position", { buffer: quad, size: 2 });
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        });
+      }
+      function program(vertexSource, fragmentSource) {
+        return new Program(gl, {
+          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
+          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
+        });
+      }
+    </script>
+  </body>
+</html>
