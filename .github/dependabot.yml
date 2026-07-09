@@ -6,9 +6,21 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # Group only non-breaking dev updates so a single breaking major does not
+      # block the whole batch. Major bumps arrive as individual PRs to review.
       dev-dependencies:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # typescript-eslint (8.x) does not support the TypeScript 7 native
+      # compiler yet — taking the TypeScript major crashes the type-checked
+      # lint. Hold it until typescript-eslint adds TypeScript 7 support.
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: github-actions
     directory: "/"
