@@ -229,4 +229,52 @@ describe("MultisampleTarget", () => {
     expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(2);
     expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
   });
+
+  it("binds and unbinds the draw framebuffer", () => {
+    const gl = createMockGL2();
+    const target = new MultisampleTarget(gl, { width: 4, height: 4 });
+
+    target.bind();
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(target.framebuffer);
+    target.unbind();
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBeNull();
+  });
+
+  it("readPixels allocates a correctly sized array and resizeToCanvas resizes", () => {
+    const gl = createMockGL2();
+    const target = new MultisampleTarget(gl, { width: 3, height: 2 });
+
+    expect(target.readPixels().length).toBe(3 * 2 * 4);
+
+    target.resizeToCanvas({ width: 8, height: 5 });
+    expect(target.width).toBe(8);
+    expect(target.height).toBe(5);
+  });
+
+  it("rejects readback into a too-small array", () => {
+    const gl = createMockGL2();
+    const target = new MultisampleTarget(gl, { width: 4, height: 4 });
+
+    expect(() => target.readPixelsInto(new Uint8Array(4))).toThrow(RangeError);
+  });
+
+  it("cleans up both framebuffers, renderbuffers, and the texture when incomplete", () => {
+    const gl = createMockGL2({ checkFramebufferStatus: () => 0x8cd6 });
+
+    expect(() => new MultisampleTarget(gl, { width: 2, height: 2, depth: true })).toThrow();
+    expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(2);
+    expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(2);
+    expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
+  });
+
+  it("rejects operations after disposal", () => {
+    const gl = createMockGL2();
+    const target = new MultisampleTarget(gl, { width: 2, height: 2 });
+
+    target.dispose();
+
+    expect(target.disposed).toBe(true);
+    expect(() => target.bind()).toThrow("MultisampleTarget has been disposed.");
+    expect(() => target.resolve()).toThrow("disposed");
+  });
 });

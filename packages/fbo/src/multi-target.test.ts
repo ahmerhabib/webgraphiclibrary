@@ -188,4 +188,66 @@ describe("MultiTarget", () => {
     expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(3);
     expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(1);
   });
+
+  it("binds, unbinds, and restores the previous framebuffer in withBound", () => {
+    const gl = createMockGL2();
+    const previous = { type: "previous-framebuffer" };
+    const target = new MultiTarget(gl, { width: 4, height: 4 });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previous);
+
+    let boundDuring: unknown;
+    const result = target.withBound(() => {
+      boundDuring = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+      return "ok";
+    });
+
+    expect(boundDuring).toBe(target.framebuffer);
+    expect(result).toBe("ok");
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(previous);
+
+    target.bind();
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBe(target.framebuffer);
+    target.unbind();
+    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).toBeNull();
+  });
+
+  it("readPixels allocates a correctly sized array and resizeToCanvas resizes", () => {
+    const gl = createMockGL2();
+    const target = new MultiTarget(gl, { width: 3, height: 2, attachments: 2 });
+
+    expect(target.readPixels(1).length).toBe(3 * 2 * 4);
+
+    target.resizeToCanvas({ width: 10, height: 6 });
+    expect(target.width).toBe(10);
+    expect(target.height).toBe(6);
+  });
+
+  it("rejects readback of a missing attachment, a too-small array, and a non-byte format", () => {
+    const gl = createMockGL2();
+    const two = new MultiTarget(gl, { width: 4, height: 4, attachments: 2 });
+    expect(() => two.readPixelsInto(new Uint8Array(64), 5)).toThrow(RangeError);
+    expect(() => two.readPixelsInto(new Uint8Array(4), 0)).toThrow(RangeError);
+
+    const float = new MultiTarget(gl, { width: 2, height: 2, attachments: [{ type: gl.FLOAT }] });
+    expect(() => float.readPixelsInto(new Uint8Array(16), 0)).toThrow("RGBA UNSIGNED_BYTE");
+  });
+
+  it("cleans up every texture and the framebuffer when the result is incomplete", () => {
+    const gl = createMockGL2({ checkFramebufferStatus: () => 0x8cd6 });
+
+    expect(() => new MultiTarget(gl, { width: 2, height: 2, attachments: 3 })).toThrow();
+    expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(1);
+    expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(3);
+  });
+
+  it("rejects operations after disposal", () => {
+    const gl = createMockGL2();
+    const target = new MultiTarget(gl, { width: 2, height: 2 });
+
+    target.dispose();
+
+    expect(target.disposed).toBe(true);
+    expect(() => target.bind()).toThrow("MultiTarget has been disposed.");
+    expect(() => target.readPixelsInto(new Uint8Array(16), 0)).toThrow("disposed");
+  });
 });

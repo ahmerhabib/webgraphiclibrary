@@ -62,6 +62,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "prepublishOnly": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "screenshots": "node scripts/capture-showcase.mjs",
