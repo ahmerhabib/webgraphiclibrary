@@ -275,7 +275,7 @@ import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphic
 | `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                                                                                |
 | `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                                                                                     |
 
-Per-module option/property/method tables live in [docs/](docs/) — see [docs/getting-started.md](docs/getting-started.md).
+Copy-paste solutions to common tasks are in [docs/recipes.md](docs/recipes.md); per-module option/property/method tables live in [docs/](docs/) — see [docs/getting-started.md](docs/getting-started.md).
 
 ### Error behavior
 
