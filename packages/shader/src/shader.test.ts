@@ -72,6 +72,25 @@ describe("Shader", () => {
     expect(make).toThrow("> 2 |");
   });
 
+  it("throws when the shader object cannot be created", () => {
+    const gl = createMockGL({ createShader: () => null });
+
+    expect(() => new Shader(gl, { type: gl.VERTEX_SHADER, source: "void main() {}" })).toThrow(
+      "Failed to create shader."
+    );
+  });
+
+  it("still reports a compile error when the info log has no line marker", () => {
+    const gl = createMockGL({
+      getShaderParameter: () => false,
+      getShaderInfoLog: () => "generic compile failure"
+    });
+
+    const make = () => new Shader(gl, { type: gl.VERTEX_SHADER, source: "line a\nline b" });
+    expect(make).toThrow("vertex shader");
+    expect(make).toThrow("generic compile failure");
+  });
+
   it("disposes once and rejects use-after-dispose assertions", () => {
     const gl = createMockGL();
     const shader = new Shader(gl, { type: gl.FRAGMENT_SHADER, source: "void main() {}" });
