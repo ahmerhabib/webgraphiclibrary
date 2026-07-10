@@ -1,0 +1,64 @@
+# webgraphiclibrary
+
+> Typed, tree-shakeable WebGL and WebGL2 resource wrappers for people who write their own render loop. It gives each repetitive, leak-prone WebGL resource — framebuffers, shaders, programs, buffers, textures, plus WebGL2 multiple render targets and multisample resolve — a small, strictly-typed lifecycle API, then gets out of the way. It is NOT a scene graph, engine, or Three.js replacement; it is the low-level building blocks below them.
+
+Key facts an agent should rely on:
+
+- **TypeScript-first.** Hand-authored types and full `.d.ts` declarations. Generated code either type-checks or fails fast.
+- **State-restoration guarantee.** Every helper that binds a resource captures the previously bound resource and restores it in a `finally` (via `withSavedBindings`). A `resize()` or `readPixels()` never clobbers the caller's bindings.
+- **Typed, early failures.** Invalid contexts, non-integer/non-positive dimensions, failed allocation (`create*` returns null), incomplete framebuffers, and use-after-`dispose()` all throw. Base failures extend `WebGLError`; use-after-dispose throws `DisposedResourceError`. Shader compile errors are annotated with the stage and the numbered source with the failing line marked.
+- **Raw handles kept.** `framebuffer.texture`, `program.program`, `buffer.buffer`, `texture.texture` are always exposed; drop to raw WebGL any time.
+- **Zero runtime dependencies. ESM only.** No network access, no telemetry.
+- **Tree-shakeable per-resource subpath exports**, with a single shared class identity across subpaths (e.g. `instanceof WebGLError` works between `.../core` and `.../shader`).
+
+## Install
+
+```bash
+npm install webgraphiclibrary@beta
+```
+
+## API surface (import from the root or a per-resource subpath)
+
+- `webgraphiclibrary/fbo` → `Framebuffer` (alias `FBO`), `MultiTarget` (WebGL2 MRT), `MultisampleTarget` (WebGL2 MSAA + `resolve()`).
+- `webgraphiclibrary/shader` → `Shader` — compile with stage-annotated, source-numbered errors.
+- `webgraphiclibrary/program` → `Program` — `use`/`withUsed`, cached `tryGetUniformLocation`/`getUniformLocation`, typed `setUniform1f..4f`/`1i`/`*fv`/`Matrix*fv`, `setTexture(name, texture, unit)`, `enableAttribute(name, layout)` (with WebGL2 instancing `divisor`).
+- `webgraphiclibrary/buffer` → `GLBuffer` — typed `upload`, `withBound`, `updateSubData(offset, data)`.
+- `webgraphiclibrary/texture` → `Texture2D` (image/canvas/video `uploadImage`, `image` option, `flipY`/`premultiplyAlpha`, `generateMipmap`), `readTexturePixels`/`readTexturePixelsInto`.
+- `webgraphiclibrary/core` → `WebGLError`, `DisposedResourceError`, `isWebGLContext`, `isWebGL2`, `withSavedBindings`.
+
+Common lifecycle on the resource wrappers: `bind()` / `unbind()` / `withBound(cb)`, `dispose()` (idempotent), and a `disposed` getter. `Framebuffer`/`MultiTarget`/`MultisampleTarget` also have `resize`/`resizeToCanvas`, `readPixels`/`readPixelsInto`.
+
+## Minimal example
+
+```ts
+import { Framebuffer } from "webgraphiclibrary/fbo";
+
+const target = new Framebuffer(gl, { width: 1024, height: 1024, depth: true });
+target.withBound(() => {
+  gl.viewport(0, 0, target.width, target.height);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  drawScene(); // your raw WebGL, unchanged
+});
+gl.bindTexture(gl.TEXTURE_2D, target.texture); // sample the result
+```
+
+## When to use
+
+Post-processing pipelines, render-to-texture, MRT/G-buffers, multisample off-screen AA, GPGPU-style readback, picking, custom effects, teaching, and demos — anywhere you want to stay close to WebGL without the boilerplate. For a full 3D scene graph use Three.js or Babylon.js; for 2D scene graphs use PixiJS/Konva.
+
+## Support
+
+- WebGL1 + WebGL2 for the core wrappers. `MultiTarget`, `MultisampleTarget`, `invalidate()`, and instanced attributes require WebGL2 (they throw a clear error on WebGL1). Float render targets auto-enable the color-buffer-float extension.
+
+## Documentation
+
+- Getting started: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/getting-started.md
+- Recipes (copy-paste task → code): https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/recipes.md
+- Framebuffer: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/framebuffer.md
+- Shader: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/shader.md
+- Program: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/program.md
+- GLBuffer: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/buffer.md
+- Texture2D: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/texture.md
+- Advanced targets (MRT, MSAA): https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/advanced-targets.md
+- Support matrix: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/support-matrix.md
+- Comparison (twgl / regl / picogl / OGL / luma.gl): https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/comparison.md
