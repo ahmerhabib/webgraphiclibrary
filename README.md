@@ -5,6 +5,7 @@
 [![bundle size](https://img.shields.io/bundlephobia/minzip/webgraphiclibrary?tag=beta)](https://bundlephobia.com/package/webgraphiclibrary)
 [![types](https://img.shields.io/npm/types/webgraphiclibrary)](https://www.typescriptlang.org/)
 [![license](https://img.shields.io/npm/l/webgraphiclibrary)](LICENSE.md)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ahmerhabib/webgraphiclibrary/badge)](https://scorecard.dev/viewer/?uri=github.com/ahmerhabib/webgraphiclibrary)
 
 **Typed WebGL resource wrappers for people who write their own render loop.**
 
@@ -327,9 +328,14 @@ Guidelines:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Security
+## Security & privacy
 
-webgraphiclibrary is a client-side rendering utility: it makes no network requests, stores no credentials, and processes no server-side input. Please report vulnerabilities through GitHub private vulnerability reporting — see [SECURITY.md](SECURITY.md).
+A client-side rendering utility with a deliberately tiny attack surface:
+
+- **No network, no telemetry.** It makes zero network requests, collects no analytics, and stores no credentials or user data — everything runs in your page against your `gl` context.
+- **Zero runtime dependencies.** Nothing is added to your app's supply chain.
+- **Hardened supply chain.** Releases are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) from GitHub Actions; every workflow action is pinned by commit SHA; CI runs `pnpm audit`, [CodeQL](.github/workflows/codeql.yml) code scanning, [OpenSSF Scorecard](.github/workflows/scorecard.yml), and Dependabot.
+- **Private disclosure.** Report vulnerabilities through GitHub private vulnerability reporting — see [SECURITY.md](SECURITY.md).
 
 ## License
 
