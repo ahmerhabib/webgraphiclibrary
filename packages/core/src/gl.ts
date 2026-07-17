@@ -1,3 +1,4 @@
+/** A WebGL 1 or WebGL 2 rendering context — the input to every wrapper. */
 export type GLContext = WebGLRenderingContext | WebGL2RenderingContext;
 
 type WebGLLike = {
@@ -6,6 +7,10 @@ type WebGLLike = {
   checkFramebufferStatus: unknown;
 };
 
+/**
+ * Structural check that `value` is a usable WebGL rendering context (duck-typed
+ * on the framebuffer methods). The wrappers use it to fail early on a bad `gl`.
+ */
 export function isWebGLContext(value: unknown): value is GLContext {
   if (value === null || typeof value !== "object") {
     return false;
@@ -19,10 +24,12 @@ export function isWebGLContext(value: unknown): value is GLContext {
   );
 }
 
+/** Narrow a context to WebGL 2 by feature-detecting `texStorage2D`. */
 export function isWebGL2(gl: GLContext): gl is WebGL2RenderingContext {
   return "texStorage2D" in gl && typeof gl.texStorage2D === "function";
 }
 
+/** Map a `checkFramebufferStatus` result to a human-readable message. */
 export function getFramebufferStatusMessage(gl: GLContext, status: number): string {
   const statuses = new Map<number, string>([
     [gl.FRAMEBUFFER_COMPLETE, "Framebuffer is complete."],

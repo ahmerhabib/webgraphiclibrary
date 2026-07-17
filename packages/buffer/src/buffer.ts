@@ -1,23 +1,45 @@
 import { WebGLError, assertNotDisposed, isWebGLContext } from "../../core/src/index";
 import type { GLContext } from "../../core/src/index";
 
+/**
+ * Data accepted by {@link GLBuffer}: a `BufferSource` to upload, or a number of
+ * bytes to allocate as uninitialized storage.
+ */
 export type BufferData = BufferSource | number;
 
+/** Options for {@link GLBuffer}. */
 export interface GLBufferOptions {
+  /** Bind target, e.g. `gl.ARRAY_BUFFER` or `gl.ELEMENT_ARRAY_BUFFER`. */
   target: number;
+  /** Usage hint. Defaults to `gl.STATIC_DRAW`. */
   usage?: number;
+  /** Initial data to upload, or a byte size to allocate. */
   data?: BufferData;
 }
 
+/**
+ * Wraps a `WebGLBuffer` with typed uploads and partial updates. Every operation
+ * saves and restores the previously bound buffer for its target.
+ */
 export class GLBuffer {
+  /** The rendering context the buffer was created with. */
   public readonly gl: GLContext;
+  /** The underlying `WebGLBuffer` handle. */
   public readonly buffer: WebGLBuffer;
+  /** The bind target passed to the constructor. */
   public readonly target: number;
+  /** The current usage hint. */
   public usage: number;
+  /** Size in bytes of the most recent upload. */
   public byteLength = 0;
 
   private isDisposed = false;
 
+  /**
+   * Create a buffer, optionally uploading initial data.
+   * @throws {TypeError} if `gl` is not a WebGL rendering context.
+   * @throws {WebGLError} if the buffer cannot be created.
+   */
   constructor(gl: GLContext, options: GLBufferOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -44,19 +66,26 @@ export class GLBuffer {
     }
   }
 
+  /** Whether {@link GLBuffer.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Bind this buffer to its target. */
   public bind(): void {
     assertNotDisposed("GLBuffer", this.isDisposed);
     this.gl.bindBuffer(this.target, this.buffer);
   }
 
+  /** Unbind this buffer's target (bind `null`). */
   public unbind(): void {
     this.gl.bindBuffer(this.target, null);
   }
 
+  /**
+   * Bind the buffer, run `render`, then restore the previously bound buffer.
+   * @returns whatever `render` returns.
+   */
   public withBound<T>(render: () => T): T {
     assertNotDisposed("GLBuffer", this.isDisposed);
     const previous = this.captureBinding();
@@ -69,6 +98,11 @@ export class GLBuffer {
     }
   }
 
+  /**
+   * Reallocate the buffer's storage with new data (a `BufferSource`) or a byte
+   * size (a number). Updates {@link GLBuffer.byteLength} and restores the
+   * previous binding.
+   */
   public upload(data: BufferData, usage = this.usage): void {
     assertNotDisposed("GLBuffer", this.isDisposed);
     this.usage = usage;
@@ -94,6 +128,11 @@ export class GLBuffer {
     }
   }
 
+  /**
+   * Overwrite part of the buffer via `bufferSubData`, without reallocating.
+   * @throws {RangeError} if `offsetBytes` is negative or non-integer, or the
+   * write would extend past {@link GLBuffer.byteLength}.
+   */
   public updateSubData(offsetBytes: number, data: BufferSource): void {
     assertNotDisposed("GLBuffer", this.isDisposed);
 
@@ -117,6 +156,7 @@ export class GLBuffer {
     }
   }
 
+  /** Delete the buffer. Idempotent — safe to call more than once. */
   public dispose(): void {
     if (this.isDisposed) {
       return;

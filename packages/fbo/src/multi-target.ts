@@ -10,29 +10,45 @@ import type { GLContext } from "../../core/src/index";
 
 /** Format options for a single color attachment of a {@link MultiTarget}. */
 export interface ColorAttachmentSpec {
+  /** Sized internal format for the texture. Defaults to `RGBA`. */
   internalFormat?: number;
+  /** Pixel format of the supplied data. Defaults to `RGBA`. */
   format?: number;
+  /** Pixel data type. Defaults to `UNSIGNED_BYTE`. */
   type?: number;
+  /** `TEXTURE_MIN_FILTER`. Defaults to `LINEAR`. */
   minFilter?: number;
+  /** `TEXTURE_MAG_FILTER`. Defaults to `LINEAR`. */
   magFilter?: number;
+  /** `TEXTURE_WRAP_S`. Defaults to `CLAMP_TO_EDGE`. */
   wrapS?: number;
+  /** `TEXTURE_WRAP_T`. Defaults to `CLAMP_TO_EDGE`. */
   wrapT?: number;
 }
 
+/** Constructor options for {@link MultiTarget}. */
 export interface MultiTargetOptions {
+  /** Target width in pixels (positive integer). */
   width: number;
+  /** Target height in pixels (positive integer). */
   height: number;
   /** A count of RGBA attachments, or per-attachment format specs. Defaults to 2. */
   attachments?: number | ColorAttachmentSpec[];
+  /** Attach a depth renderbuffer. Defaults to `false`. */
   depth?: boolean;
+  /** Attach a combined depth-stencil renderbuffer. Defaults to `false`. */
   stencil?: boolean;
 }
 
+/** Options for {@link MultiTarget.resize}. */
 export interface MultiTargetResizeOptions {
+  /** New width in pixels (positive integer). */
   width: number;
+  /** New height in pixels (positive integer). */
   height: number;
 }
 
+/** The minimal canvas shape read by {@link MultiTarget.resizeToCanvas}. */
 export type MultiTargetCanvasSize = Pick<HTMLCanvasElement, "width" | "height">;
 
 interface ResolvedAttachment {
@@ -52,18 +68,34 @@ interface ResolvedAttachment {
  * `textures[n]` afterwards.
  */
 export class MultiTarget {
+  /** The WebGL2 rendering context this target belongs to. */
   public readonly gl: WebGL2RenderingContext;
+  /** The underlying `WebGLFramebuffer` handle. */
   public readonly framebuffer: WebGLFramebuffer;
+  /** The color attachment textures, indexed by draw-buffer location. */
   public readonly textures: readonly WebGLTexture[];
+  /** Convenience alias for `textures[0]`. */
   public readonly texture: WebGLTexture;
+  /** The depth/stencil renderbuffer, or `null` when neither was requested. */
   public readonly renderbuffer: WebGLRenderbuffer | null;
+  /** Current width in pixels. Updated by {@link MultiTarget.resize}. */
   public width: number;
+  /** Current height in pixels. Updated by {@link MultiTarget.resize}. */
   public height: number;
 
   private readonly specs: readonly ResolvedAttachment[];
   private readonly stencil: boolean;
   private isDisposed = false;
 
+  /**
+   * Allocate the framebuffer, its color textures, and any depth/stencil
+   * renderbuffer, then verify completeness. Restores prior bindings.
+   *
+   * @throws {TypeError} if `gl` is not a WebGL rendering context, or the
+   *   dimensions are not positive integers.
+   * @throws {WebGLError} if `gl` is not WebGL2, allocation fails, too many
+   *   attachments are requested, or the framebuffer is incomplete.
+   */
   constructor(gl: GLContext, options: MultiTargetOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -122,19 +154,28 @@ export class MultiTarget {
     }
   }
 
+  /** Whether {@link MultiTarget.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Bind this target's framebuffer for drawing. */
   public bind(): void {
     assertNotDisposed("MultiTarget", this.isDisposed);
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
   }
 
+  /** Unbind the framebuffer, restoring the default (bind `null`). */
   public unbind(): void {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
 
+  /**
+   * Bind this target, run `render`, then restore the previously bound
+   * framebuffer, texture, and renderbuffer.
+   *
+   * @returns whatever `render` returns.
+   */
   public withBound<T>(render: () => T): T {
     return this.withSavedBindings(() => {
       this.bind();
@@ -142,6 +183,13 @@ export class MultiTarget {
     });
   }
 
+  /**
+   * Reallocate every attachment to a new size. On failure the previous
+   * dimensions are restored.
+   *
+   * @throws {TypeError} if the dimensions are not positive integers.
+   * @throws {WebGLError} if the resized framebuffer is incomplete.
+   */
   public resize(options: MultiTargetResizeOptions): void {
     assertNotDisposed("MultiTarget", this.isDisposed);
     const previousWidth = this.width;
@@ -170,14 +218,27 @@ export class MultiTarget {
     });
   }
 
+  /** Resize to match a canvas's backing-store dimensions. */
   public resizeToCanvas(canvas: MultiTargetCanvasSize): void {
     this.resize({ width: canvas.width, height: canvas.height });
   }
 
+  /**
+   * Read one attachment's RGBA pixels into a newly allocated `Uint8Array`.
+   * Prefer {@link MultiTarget.readPixelsInto} in a hot loop.
+   */
   public readPixels(attachmentIndex = 0): Uint8Array {
     return this.readPixelsInto(new Uint8Array(this.width * this.height * 4), attachmentIndex);
   }
 
+  /**
+   * Read one attachment's RGBA pixels into `out` (reused across frames).
+   * Restores the prior framebuffer binding.
+   *
+   * @throws {RangeError} if the attachment does not exist or `out` is too small.
+   * @throws {WebGLError} if the attachment is not RGBA `UNSIGNED_BYTE`.
+   * @returns the same `out` array.
+   */
   public readPixelsInto(out: Uint8Array, attachmentIndex = 0): Uint8Array {
     assertNotDisposed("MultiTarget", this.isDisposed);
     const gl = this.gl;
@@ -205,6 +266,10 @@ export class MultiTarget {
     return out;
   }
 
+  /**
+   * Delete the framebuffer, all attachment textures, and any renderbuffer.
+   * Idempotent.
+   */
   public dispose(): void {
     if (this.isDisposed) {
       return;

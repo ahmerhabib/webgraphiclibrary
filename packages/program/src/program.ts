@@ -7,6 +7,11 @@ import {
 import type { GLContext } from "../../core/src/index";
 import type { Shader } from "../../shader/src/index";
 
+/**
+ * A shader accepted by {@link ProgramOptions}: either a raw `WebGLShader` handle
+ * or a wrapped {@link Shader}, keeping this module decoupled from the shader
+ * package.
+ */
 export type ProgramShader = WebGLShader | Shader;
 
 /**
@@ -33,18 +38,34 @@ export interface AttributeLayout {
   divisor?: number;
 }
 
+/** Constructor options for {@link Program}. */
 export interface ProgramOptions {
+  /** Vertex shader — a raw `WebGLShader` or a wrapped {@link Shader}. */
   vertexShader: ProgramShader;
+  /** Fragment shader — a raw `WebGLShader` or a wrapped {@link Shader}. */
   fragmentShader: ProgramShader;
 }
 
+/**
+ * A linked WebGL program (vertex + fragment shader). Wraps `createProgram`,
+ * caches uniform locations, and exposes typed uniform/attribute setters and
+ * texture binding. Call {@link Program.dispose} to free the GPU program.
+ */
 export class Program {
+  /** The rendering context this program belongs to. */
   public readonly gl: GLContext;
+  /** The underlying `WebGLProgram` handle. */
   public readonly program: WebGLProgram;
 
   private isDisposed = false;
   private readonly uniformLocations = new Map<string, WebGLUniformLocation | null>();
 
+  /**
+   * Create and link a program from a vertex and fragment shader.
+   *
+   * @throws {TypeError} if `gl` is not a WebGL rendering context.
+   * @throws {WebGLError} if the program cannot be created or fails to link.
+   */
   constructor(gl: GLContext, options: ProgramOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -76,15 +97,23 @@ export class Program {
     }
   }
 
+  /** Whether {@link Program.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Make this the active program (`useProgram`). */
   public use(): void {
     assertNotDisposed("Program", this.isDisposed);
     this.gl.useProgram(this.program);
   }
 
+  /**
+   * Activate this program, run `run`, then restore the previously active
+   * program.
+   *
+   * @returns whatever `run` returns.
+   */
   public withUsed<T>(run: () => T): T {
     assertNotDisposed("Program", this.isDisposed);
     const gl = this.gl;
@@ -121,6 +150,12 @@ export class Program {
     return location;
   }
 
+  /**
+   * Resolve a uniform location, throwing if it is not present. Prefer
+   * {@link Program.tryGetUniformLocation} when a missing uniform is acceptable.
+   *
+   * @throws {WebGLError} if the uniform is not found.
+   */
   public getUniformLocation(name: string): WebGLUniformLocation {
     const location = this.tryGetUniformLocation(name);
 
@@ -131,61 +166,73 @@ export class Program {
     return location;
   }
 
+  /** Set a `float` uniform. Returns `this` for chaining. */
   public setUniform1f(name: string, x: number): this {
     this.gl.uniform1f(this.tryGetUniformLocation(name), x);
     return this;
   }
 
+  /** Set a `vec2` uniform. Returns `this` for chaining. */
   public setUniform2f(name: string, x: number, y: number): this {
     this.gl.uniform2f(this.tryGetUniformLocation(name), x, y);
     return this;
   }
 
+  /** Set a `vec3` uniform. Returns `this` for chaining. */
   public setUniform3f(name: string, x: number, y: number, z: number): this {
     this.gl.uniform3f(this.tryGetUniformLocation(name), x, y, z);
     return this;
   }
 
+  /** Set a `vec4` uniform. Returns `this` for chaining. */
   public setUniform4f(name: string, x: number, y: number, z: number, w: number): this {
     this.gl.uniform4f(this.tryGetUniformLocation(name), x, y, z, w);
     return this;
   }
 
+  /** Set an `int`/`sampler` uniform. Returns `this` for chaining. */
   public setUniform1i(name: string, x: number): this {
     this.gl.uniform1i(this.tryGetUniformLocation(name), x);
     return this;
   }
 
+  /** Set a `float[]` uniform. Returns `this` for chaining. */
   public setUniform1fv(name: string, values: Float32List): this {
     this.gl.uniform1fv(this.tryGetUniformLocation(name), values);
     return this;
   }
 
+  /** Set a `vec2[]` uniform. Returns `this` for chaining. */
   public setUniform2fv(name: string, values: Float32List): this {
     this.gl.uniform2fv(this.tryGetUniformLocation(name), values);
     return this;
   }
 
+  /** Set a `vec3[]` uniform. Returns `this` for chaining. */
   public setUniform3fv(name: string, values: Float32List): this {
     this.gl.uniform3fv(this.tryGetUniformLocation(name), values);
     return this;
   }
 
+  /** Set a `vec4[]` uniform. Returns `this` for chaining. */
   public setUniform4fv(name: string, values: Float32List): this {
     this.gl.uniform4fv(this.tryGetUniformLocation(name), values);
     return this;
   }
 
+  /** Set a `mat2` uniform. Returns `this` for chaining. */
   public setUniformMatrix2fv(name: string, values: Float32List, transpose = false): this {
     this.gl.uniformMatrix2fv(this.tryGetUniformLocation(name), transpose, values);
     return this;
   }
 
+  /** Set a `mat3` uniform. Returns `this` for chaining. */
   public setUniformMatrix3fv(name: string, values: Float32List, transpose = false): this {
     this.gl.uniformMatrix3fv(this.tryGetUniformLocation(name), transpose, values);
     return this;
   }
 
+  /** Set a `mat4` uniform. Returns `this` for chaining. */
   public setUniformMatrix4fv(name: string, values: Float32List, transpose = false): this {
     this.gl.uniformMatrix4fv(this.tryGetUniformLocation(name), transpose, values);
     return this;
@@ -203,6 +250,11 @@ export class Program {
     return this;
   }
 
+  /**
+   * Resolve a vertex attribute's location.
+   *
+   * @throws {WebGLError} if the attribute is not found (index `< 0`).
+   */
   public getAttribLocation(name: string): number {
     assertNotDisposed("Program", this.isDisposed);
     const location = this.gl.getAttribLocation(this.program, name);
@@ -256,6 +308,7 @@ export class Program {
     return this;
   }
 
+  /** Delete the program. Idempotent. */
   public dispose(): void {
     if (this.isDisposed) {
       return;
