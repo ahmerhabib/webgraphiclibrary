@@ -9,25 +9,39 @@ import {
 } from "../../core/src/index";
 import type { GLContext } from "../../core/src/index";
 
+/** Options for {@link Framebuffer}. */
 export interface FramebufferOptions {
+  /** Width in pixels (positive integer). */
   width: number;
+  /** Height in pixels (positive integer). */
   height: number;
+  /** Color texture internal format. Defaults to `gl.RGBA`. */
   internalFormat?: number;
+  /** Color texture data format. Defaults to `gl.RGBA`. */
   format?: number;
+  /** Color texture data type. Defaults to `gl.UNSIGNED_BYTE`. `gl.FLOAT` auto-enables the color-buffer-float extension. */
   type?: number;
+  /** Minification filter. Defaults to `gl.LINEAR`. */
   minFilter?: number;
+  /** Magnification filter. Defaults to `gl.LINEAR`. */
   magFilter?: number;
+  /** Horizontal wrap mode. Defaults to `gl.CLAMP_TO_EDGE`. */
   wrapS?: number;
+  /** Vertical wrap mode. Defaults to `gl.CLAMP_TO_EDGE`. */
   wrapT?: number;
+  /** Add a `DEPTH_COMPONENT16` renderbuffer. Defaults to `false`. */
   depth?: boolean;
+  /** Add a combined `DEPTH_STENCIL` renderbuffer. Defaults to `false`. */
   stencil?: boolean;
 }
 
+/** Target size for {@link Framebuffer.resize}. */
 export interface FramebufferResizeOptions {
   width: number;
   height: number;
 }
 
+/** The subset of a canvas used by `resizeToCanvas` — its backing-store `width`/`height`. */
 export type FramebufferCanvasSize = Pick<HTMLCanvasElement, "width" | "height">;
 
 type TextureOptions = Required<
@@ -38,17 +52,34 @@ type TextureOptions = Required<
 > &
   Required<Pick<FramebufferOptions, "depth" | "stencil">>;
 
+/**
+ * An off-screen render target: a color texture with optional depth or
+ * depth-stencil renderbuffer storage. Render into it with {@link Framebuffer.withBound},
+ * then sample {@link Framebuffer.texture} in a later pass. Exported as `FBO` too.
+ */
 export class Framebuffer {
+  /** The rendering context the target was created with. */
   public readonly gl: GLContext;
+  /** The underlying `WebGLFramebuffer` handle. */
   public readonly framebuffer: WebGLFramebuffer;
+  /** The color attachment texture — sample this after rendering. */
   public readonly texture: WebGLTexture;
+  /** The depth/stencil renderbuffer, or `null` when neither was requested. */
   public readonly renderbuffer: WebGLRenderbuffer | null;
+  /** Current width in pixels. */
   public width: number;
+  /** Current height in pixels. */
   public height: number;
 
   private readonly options: TextureOptions;
   private isDisposed = false;
 
+  /**
+   * Create an off-screen render target.
+   * @throws {TypeError} if `gl` is not a WebGL rendering context.
+   * @throws {RangeError | TypeError} for invalid dimensions.
+   * @throws {WebGLError} if a resource fails to allocate or the framebuffer is incomplete.
+   */
   constructor(gl: GLContext, options: FramebufferOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -104,19 +135,27 @@ export class Framebuffer {
     }
   }
 
+  /** Whether {@link Framebuffer.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Bind this framebuffer as the active draw/read target. */
   public bind(): void {
     assertNotDisposed("Framebuffer", this.isDisposed);
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
   }
 
+  /** Bind the default framebuffer (the screen). */
   public unbind(): void {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
 
+  /**
+   * Bind this target, run `render`, then restore the previously bound
+   * framebuffer (even if `render` throws).
+   * @returns whatever `render` returns.
+   */
   public withBound<T>(render: () => T): T {
     return this.withSavedBindings(() => {
       this.bind();
@@ -124,6 +163,11 @@ export class Framebuffer {
     });
   }
 
+  /**
+   * Reallocate the color (and depth/stencil) storage to a new size. Reverts the
+   * dimensions and rethrows if the resized framebuffer is incomplete.
+   * @throws {RangeError | TypeError} for invalid dimensions.
+   */
   public resize(options: FramebufferResizeOptions): void {
     assertNotDisposed("Framebuffer", this.isDisposed);
     const previousWidth = this.width;
@@ -152,10 +196,16 @@ export class Framebuffer {
     });
   }
 
+  /** Resize to match a canvas's backing-store size. */
   public resizeToCanvas(canvas: FramebufferCanvasSize): void {
     this.resize({ width: canvas.width, height: canvas.height });
   }
 
+  /**
+   * Read the whole color attachment into a newly allocated `Uint8Array`
+   * (`RGBA` / `UNSIGNED_BYTE` targets only). Prefer {@link Framebuffer.readPixelsInto}
+   * in a hot loop to avoid the allocation.
+   */
   public readPixels(): Uint8Array {
     return this.readPixelsInto(new Uint8Array(this.width * this.height * 4));
   }
@@ -214,6 +264,7 @@ export class Framebuffer {
     });
   }
 
+  /** Delete the framebuffer, its color texture, and any renderbuffer. Idempotent. */
   public dispose(): void {
     if (this.isDisposed) {
       return;

@@ -8,26 +8,39 @@ import {
 } from "../../core/src/index";
 import type { GLContext } from "../../core/src/index";
 
+/** Constructor options for {@link MultisampleTarget}. */
 export interface MultisampleTargetOptions {
+  /** Target width in pixels (positive integer). */
   width: number;
+  /** Target height in pixels (positive integer). */
   height: number;
   /** Requested MSAA sample count; clamped to the context's `MAX_SAMPLES`. Defaults to 4. */
   samples?: number;
   /** Sized, color-renderable internal format for the multisampled color storage. Defaults to `RGBA8`. */
   internalFormat?: number;
+  /** Resolve texture `TEXTURE_MIN_FILTER`. Defaults to `LINEAR`. */
   minFilter?: number;
+  /** Resolve texture `TEXTURE_MAG_FILTER`. Defaults to `LINEAR`. */
   magFilter?: number;
+  /** Resolve texture `TEXTURE_WRAP_S`. Defaults to `CLAMP_TO_EDGE`. */
   wrapS?: number;
+  /** Resolve texture `TEXTURE_WRAP_T`. Defaults to `CLAMP_TO_EDGE`. */
   wrapT?: number;
+  /** Attach a multisampled depth renderbuffer. Defaults to `false`. */
   depth?: boolean;
+  /** Attach a multisampled depth-stencil renderbuffer. Defaults to `false`. */
   stencil?: boolean;
 }
 
+/** Options for {@link MultisampleTarget.resize}. */
 export interface MultisampleTargetResizeOptions {
+  /** New width in pixels (positive integer). */
   width: number;
+  /** New height in pixels (positive integer). */
   height: number;
 }
 
+/** The minimal canvas shape read by {@link MultisampleTarget.resizeToCanvas}. */
 export type MultisampleTargetCanvasSize = Pick<HTMLCanvasElement, "width" | "height">;
 
 interface ResolveConfig {
@@ -43,14 +56,23 @@ interface ResolveConfig {
  * into `texture`, which is then sampleable like any other texture.
  */
 export class MultisampleTarget {
+  /** The WebGL2 rendering context this target belongs to. */
   public readonly gl: WebGL2RenderingContext;
+  /** The multisampled draw framebuffer (render into this). */
   public readonly framebuffer: WebGLFramebuffer;
+  /** The single-sample framebuffer that {@link MultisampleTarget.resolve} blits into. */
   public readonly resolveFramebuffer: WebGLFramebuffer;
+  /** The resolved, sampleable color texture. Valid after `resolve()`. */
   public readonly texture: WebGLTexture;
+  /** The multisampled color renderbuffer backing `framebuffer`. */
   public readonly colorRenderbuffer: WebGLRenderbuffer;
+  /** The multisampled depth/stencil renderbuffer, or `null` if not requested. */
   public readonly depthRenderbuffer: WebGLRenderbuffer | null;
+  /** The actual sample count in use (requested value clamped to `MAX_SAMPLES`). */
   public readonly samples: number;
+  /** Current width in pixels. Updated by {@link MultisampleTarget.resize}. */
   public width: number;
+  /** Current height in pixels. Updated by {@link MultisampleTarget.resize}. */
   public height: number;
 
   private readonly colorFormat: number;
@@ -58,6 +80,16 @@ export class MultisampleTarget {
   private readonly resolveConfig: ResolveConfig;
   private isDisposed = false;
 
+  /**
+   * Allocate the multisampled draw framebuffer, the resolve framebuffer/texture,
+   * and any depth/stencil storage, then verify both are complete. Restores prior
+   * bindings.
+   *
+   * @throws {TypeError} if `gl` is not a WebGL rendering context, or the
+   *   dimensions are not positive integers.
+   * @throws {WebGLError} if `gl` is not WebGL2, allocation fails, or either
+   *   framebuffer is incomplete.
+   */
   constructor(gl: GLContext, options: MultisampleTargetOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -135,19 +167,28 @@ export class MultisampleTarget {
     }
   }
 
+  /** Whether {@link MultisampleTarget.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Bind the multisampled draw framebuffer for rendering. */
   public bind(): void {
     assertNotDisposed("MultisampleTarget", this.isDisposed);
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
   }
 
+  /** Unbind the framebuffer, restoring the default (bind `null`). */
   public unbind(): void {
     this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
 
+  /**
+   * Bind the draw framebuffer, run `render`, then restore prior bindings. Call
+   * {@link MultisampleTarget.resolve} afterwards before sampling `texture`.
+   *
+   * @returns whatever `render` returns.
+   */
   public withBound<T>(render: () => T): T {
     return this.withSavedBindings(() => {
       this.bind();
@@ -193,6 +234,13 @@ export class MultisampleTarget {
     );
   }
 
+  /**
+   * Reallocate the color, depth, and resolve storage to a new size. On failure
+   * the previous dimensions are restored.
+   *
+   * @throws {TypeError} if the dimensions are not positive integers.
+   * @throws {WebGLError} if either resized framebuffer is incomplete.
+   */
   public resize(options: MultisampleTargetResizeOptions): void {
     assertNotDisposed("MultisampleTarget", this.isDisposed);
     const previousWidth = this.width;
@@ -220,14 +268,28 @@ export class MultisampleTarget {
     });
   }
 
+  /** Resize to match a canvas's backing-store dimensions. */
   public resizeToCanvas(canvas: MultisampleTargetCanvasSize): void {
     this.resize({ width: canvas.width, height: canvas.height });
   }
 
+  /**
+   * Read the resolved RGBA pixels into a newly allocated `Uint8Array`. Call
+   * {@link MultisampleTarget.resolve} first. Prefer
+   * {@link MultisampleTarget.readPixelsInto} in a hot loop.
+   */
   public readPixels(): Uint8Array {
     return this.readPixelsInto(new Uint8Array(this.width * this.height * 4));
   }
 
+  /**
+   * Read the resolved RGBA pixels into `out` (reused across frames). Call
+   * {@link MultisampleTarget.resolve} first. Restores the prior read-framebuffer
+   * binding.
+   *
+   * @throws {RangeError} if `out` is too small.
+   * @returns the same `out` array.
+   */
   public readPixelsInto(out: Uint8Array): Uint8Array {
     assertNotDisposed("MultisampleTarget", this.isDisposed);
     const gl = this.gl;
@@ -256,6 +318,10 @@ export class MultisampleTarget {
     return out;
   }
 
+  /**
+   * Delete both framebuffers, the color/depth renderbuffers, and the resolve
+   * texture. Idempotent.
+   */
   public dispose(): void {
     if (this.isDisposed) {
       return;

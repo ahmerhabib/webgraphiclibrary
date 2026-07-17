@@ -14,22 +14,37 @@ import type { BindingSlot, GLContext } from "../../core/src/index";
 export type TextureImageSource =
   HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | ImageData;
 
+/** Options for {@link Texture2D}. */
 export interface Texture2DOptions {
+  /** Width in pixels (positive integer). */
   width: number;
+  /** Height in pixels (positive integer). */
   height: number;
+  /** Internal format. Defaults to `gl.RGBA`. */
   internalFormat?: number;
+  /** Data format. Defaults to `gl.RGBA`. */
   format?: number;
+  /** Data type. Defaults to `gl.UNSIGNED_BYTE`. */
   type?: number;
+  /** Minification filter. Defaults to `gl.LINEAR`. */
   minFilter?: number;
+  /** Magnification filter. Defaults to `gl.LINEAR`. */
   magFilter?: number;
+  /** Horizontal wrap mode. Defaults to `gl.CLAMP_TO_EDGE`. */
   wrapS?: number;
+  /** Vertical wrap mode. Defaults to `gl.CLAMP_TO_EDGE`. */
   wrapT?: number;
+  /** Initial pixel data. Defaults to `null` (uninitialized storage). */
   data?: ArrayBufferView | null;
+  /** Upload from an image source at construction instead of allocating empty storage. */
   image?: TextureImageSource;
+  /** Set `UNPACK_FLIP_Y_WEBGL` for image uploads. Defaults to `false`. */
   flipY?: boolean;
+  /** Set `UNPACK_PREMULTIPLY_ALPHA_WEBGL` for image uploads. Defaults to `false`. */
   premultiplyAlpha?: boolean;
 }
 
+/** Options for {@link Texture2D.upload} — a {@link Texture2DOptions} with required dimensions. */
 export interface TextureUploadOptions extends Partial<Texture2DOptions> {
   width: number;
   height: number;
@@ -47,15 +62,30 @@ interface TextureConfig {
   premultiplyAlpha: boolean;
 }
 
+/**
+ * Allocates and uploads a 2D texture from typed-array data or an image source
+ * (image, canvas, video, `ImageBitmap`, `ImageData`), with mipmap generation
+ * and pixel-store options. Bindings are saved and restored around every upload.
+ */
 export class Texture2D {
+  /** The rendering context the texture was created with. */
   public readonly gl: GLContext;
+  /** The underlying `WebGLTexture` handle. */
   public readonly texture: WebGLTexture;
+  /** Current width in pixels (tracks the last upload). */
   public width: number;
+  /** Current height in pixels (tracks the last upload). */
   public height: number;
 
   private readonly config: TextureConfig;
   private isDisposed = false;
 
+  /**
+   * Create a texture, optionally allocating storage or uploading an image.
+   * @throws {TypeError} if `gl` is not a WebGL rendering context.
+   * @throws {RangeError | TypeError} for invalid dimensions.
+   * @throws {WebGLError} if the texture cannot be created.
+   */
   constructor(gl: GLContext, options: Texture2DOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
@@ -101,19 +131,26 @@ export class Texture2D {
     }
   }
 
+  /** Whether {@link Texture2D.dispose} has been called. */
   public get disposed(): boolean {
     return this.isDisposed;
   }
 
+  /** Bind this texture to `TEXTURE_2D`. */
   public bind(): void {
     assertNotDisposed("Texture2D", this.isDisposed);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
   }
 
+  /** Unbind `TEXTURE_2D` (bind `null`). */
   public unbind(): void {
     this.gl.bindTexture(this.gl.TEXTURE_2D, null);
   }
 
+  /**
+   * Bind this texture, run `render`, then restore the previously bound texture.
+   * @returns whatever `render` returns.
+   */
   public withBound<T>(render: () => T): T {
     assertNotDisposed("Texture2D", this.isDisposed);
     const gl = this.gl;
@@ -133,6 +170,7 @@ export class Texture2D {
     );
   }
 
+  /** Reallocate the texture from typed-array data (or empty storage), updating its size. */
   public upload(options: TextureUploadOptions): void {
     assertNotDisposed("Texture2D", this.isDisposed);
     const previousWidth = this.width;
@@ -154,6 +192,11 @@ export class Texture2D {
     });
   }
 
+  /**
+   * Upload from an image source (image, canvas, video, `ImageBitmap`,
+   * `ImageData`), applying `flipY`/`premultiplyAlpha` and tracking the source's
+   * size. Restores the previous texture binding and pixel-store state.
+   */
   public uploadImage(source: TextureImageSource): void {
     assertNotDisposed("Texture2D", this.isDisposed);
     const gl = this.gl;
@@ -194,6 +237,7 @@ export class Texture2D {
     );
   }
 
+  /** Generate a mipmap chain for the texture. Restores the previous binding. */
   public generateMipmap(): void {
     assertNotDisposed("Texture2D", this.isDisposed);
 
@@ -203,6 +247,7 @@ export class Texture2D {
     });
   }
 
+  /** Delete the texture. Idempotent. */
   public dispose(): void {
     if (this.isDisposed) {
       return;
@@ -240,6 +285,10 @@ export class Texture2D {
   }
 }
 
+/**
+ * Read a texture's RGBA pixels into a newly allocated `Uint8Array` through a
+ * temporary framebuffer. Prefer {@link readTexturePixelsInto} in a hot loop.
+ */
 export function readTexturePixels(gl: GLContext, texture: Texture2D): Uint8Array {
   return readTexturePixelsInto(gl, texture, new Uint8Array(texture.width * texture.height * 4));
 }
