@@ -2,7 +2,22 @@
 
 All notable changes to this package are documented here.
 
-## Unreleased
+## 2.0.0-beta.2 — 2026-07-17
+
+### Added
+
+- TSDoc on every public export (types, classes, properties, and methods), including per-option-property notes and `@throws` annotations. The comments ship in the generated `.d.ts` bundles, so editors and type-aware tooling surface them on hover and completion.
+- `llms.txt` manifest and `docs/recipes.md` / `docs/testing.md` guides to make the API easy to retrieve and apply.
+
+### Changed
+
+- Releases now publish through a tag-triggered GitHub Actions workflow using npm provenance, so each published version carries a verifiable build attestation.
+
+### Security
+
+- Added CodeQL and OpenSSF Scorecard workflows, SHA-pinned all GitHub Actions, and grouped Dependabot updates. The package continues to ship with zero runtime dependencies and performs no network or telemetry calls.
+
+## 2.0.0-beta.1
 
 ### Added
 
