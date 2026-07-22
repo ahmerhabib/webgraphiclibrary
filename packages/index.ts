@@ -4,3 +4,4 @@ export * from "./fbo/src/index";
 export * from "./program/src/index";
 export * from "./shader/src/index";
 export * from "./texture/src/index";
+export * from "./vao/src/index";

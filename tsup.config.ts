@@ -8,7 +8,8 @@ export default defineConfig({
     fbo: "packages/fbo/src/index.ts",
     program: "packages/program/src/index.ts",
     shader: "packages/shader/src/index.ts",
-    texture: "packages/texture/src/index.ts"
+    texture: "packages/texture/src/index.ts",
+    vao: "packages/vao/src/index.ts"
   },
   format: ["esm"],
   dts: true,

@@ -16,5 +16,7 @@ What each capability requires. "WebGL1" means core WebGL 1; "WebGL2" means a Web
 | Compressed textures               | Not wrapped                                           | Not wrapped                         | Use the raw handle + `compressedTexImage2D`                      |
 | Multisample renderbuffers / blit  | No                                                    | Yes (`MultisampleTarget`)           | Render, then `resolve()` blits into a sampleable texture         |
 | Multiple render targets (MRT)     | No                                                    | Yes (`MultiTarget`)                 | Several sampleable color attachments wired with `drawBuffers`    |
+| Vertex array objects (VAO)        | No                                                    | Yes (`VertexArray`)                 | Record attribute layout once, restore it with one bind           |
+| Uniform buffer objects (UBO)      | No                                                    | Yes (`UniformBuffer`)               | `std140` blocks shared across programs via `connect`/`bindTo`    |
 
 Anything not wrapped is still reachable: every resource exposes its raw handle (`framebuffer.framebuffer`, `texture.texture`, …) so you can drop to raw WebGL where needed.

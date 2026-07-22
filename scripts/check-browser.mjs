@@ -20,7 +20,8 @@ const EXAMPLES = [
   "examples/picking/index.html",
   "examples/postprocessing/index.html",
   "examples/gbuffer/index.html",
-  "examples/antialiasing/index.html"
+  "examples/antialiasing/index.html",
+  "examples/instancing/index.html"
 ];
 
 if (!existsSync(join(root, "dist"))) {

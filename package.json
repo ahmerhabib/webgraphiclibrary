@@ -1,6 +1,6 @@
 {
   "name": "webgraphiclibrary",
-  "version": "2.0.0-beta.2",
+  "version": "2.0.0-beta.3",
   "description": "Typed, tree-shakeable WebGL & WebGL2 resource wrappers — framebuffers, shaders, programs, buffers, textures, MRT and multisample — with state-restoration guarantees and zero dependencies.",
   "type": "module",
   "private": false,
@@ -53,6 +53,10 @@
     "./texture": {
       "types": "./dist/texture.d.ts",
       "import": "./dist/texture.js"
+    },
+    "./vao": {
+      "types": "./dist/vao.d.ts",
+      "import": "./dist/vao.js"
     }
   },
   "scripts": {
@@ -124,6 +128,6 @@
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
-    "tag": "beta"
+    "tag": "latest"
   }
 }

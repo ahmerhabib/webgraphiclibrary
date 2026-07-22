@@ -14,7 +14,7 @@ Key facts an agent should rely on:
 ## Install
 
 ```bash
-npm install webgraphiclibrary@beta
+npm install webgraphiclibrary
 ```
 
 ## API surface (import from the root or a per-resource subpath)
@@ -22,8 +22,9 @@ npm install webgraphiclibrary@beta
 - `webgraphiclibrary/fbo` → `Framebuffer` (alias `FBO`), `MultiTarget` (WebGL2 MRT), `MultisampleTarget` (WebGL2 MSAA + `resolve()`).
 - `webgraphiclibrary/shader` → `Shader` — compile with stage-annotated, source-numbered errors.
 - `webgraphiclibrary/program` → `Program` — `use`/`withUsed`, cached `tryGetUniformLocation`/`getUniformLocation`, typed `setUniform1f..4f`/`1i`/`*fv`/`Matrix*fv`, `setTexture(name, texture, unit)`, `enableAttribute(name, layout)` (with WebGL2 instancing `divisor`).
-- `webgraphiclibrary/buffer` → `GLBuffer` — typed `upload`, `withBound`, `updateSubData(offset, data)`.
+- `webgraphiclibrary/buffer` → `GLBuffer` — typed `upload`, `withBound`, `updateSubData(offset, data)` — and `UniformBuffer` (WebGL2 UBO) — `connect(program, blockName, index)`, `bindTo(index)`, `bindRange`, `update(data, byteOffset?)` for std140 uniform blocks shared across programs.
 - `webgraphiclibrary/texture` → `Texture2D` (image/canvas/video `uploadImage`, `image` option, `flipY`/`premultiplyAlpha`, `generateMipmap`), `readTexturePixels`/`readTexturePixelsInto`.
+- `webgraphiclibrary/vao` → `VertexArray` (WebGL2 VAO) — record attribute layout once inside `withBound`, restore it all with one bind at draw time.
 - `webgraphiclibrary/core` → `WebGLError`, `DisposedResourceError`, `isWebGLContext`, `isWebGL2`, `withSavedBindings`.
 
 Common lifecycle on the resource wrappers: `bind()` / `unbind()` / `withBound(cb)`, `dispose()` (idempotent), and a `disposed` getter. `Framebuffer`/`MultiTarget`/`MultisampleTarget` also have `resize`/`resizeToCanvas`, `readPixels`/`readPixelsInto`.
@@ -48,7 +49,7 @@ Post-processing pipelines, render-to-texture, MRT/G-buffers, multisample off-scr
 
 ## Support
 
-- WebGL1 + WebGL2 for the core wrappers. `MultiTarget`, `MultisampleTarget`, `invalidate()`, and instanced attributes require WebGL2 (they throw a clear error on WebGL1). Float render targets auto-enable the color-buffer-float extension.
+- WebGL1 + WebGL2 for the core wrappers. `MultiTarget`, `MultisampleTarget`, `VertexArray`, `UniformBuffer`, `invalidate()`, and instanced attributes require WebGL2 (they throw a clear error on WebGL1). Float render targets auto-enable the color-buffer-float extension.
 
 ## Documentation
 
@@ -57,7 +58,8 @@ Post-processing pipelines, render-to-texture, MRT/G-buffers, multisample off-scr
 - Framebuffer: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/framebuffer.md
 - Shader: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/shader.md
 - Program: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/program.md
-- GLBuffer: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/buffer.md
+- GLBuffer + UniformBuffer: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/buffer.md
+- VertexArray: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/vao.md
 - Texture2D: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/texture.md
 - Advanced targets (MRT, MSAA): https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/advanced-targets.md
 - Support matrix: https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/support-matrix.md

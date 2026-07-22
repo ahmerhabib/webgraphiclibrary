@@ -12,9 +12,10 @@
       // the results on window.__WGL_RESULT__ for scripts/check-browser.mjs.
       import { Shader } from "../../dist/shader.js";
       import { Program } from "../../dist/program.js";
-      import { GLBuffer } from "../../dist/buffer.js";
+      import { GLBuffer, UniformBuffer } from "../../dist/buffer.js";
       import { Texture2D, readTexturePixels } from "../../dist/texture.js";
       import { Framebuffer, MultiTarget, MultisampleTarget } from "../../dist/fbo.js";
+      import { VertexArray } from "../../dist/vao.js";
       import { WebGLError } from "../../dist/core.js";
 
       const failures = [];
@@ -207,6 +208,88 @@
             `[${resolved[0]}, ${resolved[1]}, ${resolved[2]}]`
           );
           msaa.dispose();
+
+          // VertexArray + UniformBuffer: record attribute state once, feed the
+          // tint through a std140 uniform block, draw, then update and redraw.
+          const uboProgram = new Program(gl2, {
+            vertexShader: new Shader(gl2, {
+              type: gl2.VERTEX_SHADER,
+              source: `#version 300 es
+                in vec2 position;
+                void main() { gl_Position = vec4(position, 0.0, 1.0); }`
+            }),
+            fragmentShader: new Shader(gl2, {
+              type: gl2.FRAGMENT_SHADER,
+              source: `#version 300 es
+                precision mediump float;
+                uniform Config { vec4 tint; };
+                out vec4 fragColor;
+                void main() { fragColor = tint; }`
+            })
+          });
+          const uboQuad = new GLBuffer(gl2, {
+            target: gl2.ARRAY_BUFFER,
+            data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
+          });
+
+          const vao = new VertexArray(gl2);
+          vao.withBound(() => {
+            uboProgram.enableAttribute("position", { buffer: uboQuad, size: 2 });
+          });
+          check(
+            "VAO binding restored after recording",
+            gl2.getParameter(gl2.VERTEX_ARRAY_BINDING) === null
+          );
+
+          const tint = new UniformBuffer(gl2, { data: new Float32Array([1, 0, 1, 1]) });
+          tint.connect(uboProgram, "Config", 0);
+          tint.bindTo(0);
+          check(
+            "missing uniform block throws WebGLError",
+            throws(
+              () => tint.connect(uboProgram, "DoesNotExist", 1),
+              (error) => error instanceof WebGLError
+            )
+          );
+
+          const uboTarget = new Framebuffer(gl2, { width: 2, height: 2 });
+          const drawWithVao = () => {
+            uboTarget.withBound(() => {
+              gl2.viewport(0, 0, 2, 2);
+              gl2.clear(gl2.COLOR_BUFFER_BIT);
+              uboProgram.withUsed(() => {
+                vao.withBound(() => {
+                  gl2.drawArrays(gl2.TRIANGLE_STRIP, 0, 4);
+                });
+              });
+            });
+            return uboTarget.readPixels();
+          };
+
+          const magenta = drawWithVao();
+          check(
+            "UBO tint draws magenta through the VAO",
+            magenta[0] === 255 && magenta[1] === 0 && magenta[2] === 255,
+            `[${magenta[0]}, ${magenta[1]}, ${magenta[2]}]`
+          );
+
+          tint.update(new Float32Array([0, 1, 1, 1]));
+          const cyan = drawWithVao();
+          check(
+            "UBO update redraws cyan",
+            cyan[0] === 0 && cyan[1] === 255 && cyan[2] === 255,
+            `[${cyan[0]}, ${cyan[1]}, ${cyan[2]}]`
+          );
+
+          vao.dispose();
+          check(
+            "VAO use-after-dispose throws",
+            throws(() => vao.bind())
+          );
+          tint.dispose();
+          uboTarget.dispose();
+          uboProgram.dispose();
+          uboQuad.dispose();
         }
       } catch (error) {
         failures.push(`threw: ${error instanceof Error ? error.message : String(error)}`);

@@ -26,4 +26,20 @@ Its actual neighbors are the low-level WebGL/WebGL2 helper libraries.
 - You need **WebGPU** — target luma.gl, TypeGPU, or Three.js's WebGPU renderer. webgraphiclibrary is deliberately WebGL/WebGL2 for reach and teaching today, with a backend-portable surface as a roadmap goal.
 - You want a **scene graph, materials, or a full engine** — use Three.js, Babylon.js, PixiJS, or OGL.
 
+## WebGPU portability
+
+WebGPU's model is explicit resources, recorded state, and no hidden globals — exactly the shape this library imposes on WebGL. Code written against the wrappers ports far more mechanically than code written against scattered `gl.*` global-state calls, because each wrapper corresponds to a WebGPU concept:
+
+| webgraphiclibrary                    | WebGPU counterpart                                |
+| ------------------------------------ | ------------------------------------------------- |
+| `Shader` + `Program`                 | `GPUShaderModule` + `GPURenderPipeline`           |
+| `GLBuffer`                           | `GPUBuffer` (vertex/index usage)                  |
+| `VertexArray` (recorded layout)      | `GPUVertexState` buffer layouts on the pipeline   |
+| `UniformBuffer` + `connect`/`bindTo` | `GPUBuffer` (uniform usage) in a `GPUBindGroup`   |
+| `Framebuffer` / `MultiTarget`        | `GPURenderPassDescriptor` color/depth attachments |
+| `MultisampleTarget` + `resolve()`    | Multisampled attachment + `resolveTarget`         |
+| `withBound` / `withUsed` scopes      | Encoder scope of a `GPURenderPassEncoder`         |
+
+Structure a renderer around these wrappers today and the eventual WebGPU port is a per-resource translation, not a rewrite.
+
 Popularity and activity figures for the libraries above change frequently; check each project's repository and the npm registry for current numbers.
