@@ -66,7 +66,7 @@ describe("UniformBuffer", () => {
   it("uploads initial data and restores the previous UNIFORM_BUFFER binding", () => {
     const gl = createMockGL2();
     const previous = { tag: "previous" };
-    gl.bindBuffer(gl.UNIFORM_BUFFER, previous as unknown as WebGLBuffer);
+    gl.bindBuffer(gl.UNIFORM_BUFFER, previous);
 
     const data = new Float32Array([1, 2, 3, 4]);
     const ubo = new UniformBuffer(gl, { data, usage: gl.STATIC_DRAW });
@@ -130,7 +130,7 @@ describe("UniformBuffer", () => {
     });
     const ubo = new UniformBuffer(gl, { data: 32 });
 
-    expect(() => ubo.connect({ tag: "program" } as unknown as WebGLProgram, "Missing", 0)).toThrow(
+    expect(() => ubo.connect({ tag: "program" }, "Missing", 0)).toThrow(
       'Uniform block "Missing" was not found.'
     );
   });

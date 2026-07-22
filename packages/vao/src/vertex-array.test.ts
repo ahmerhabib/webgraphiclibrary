@@ -67,7 +67,7 @@ describe("VertexArray", () => {
   it("withBound restores the previously bound vertex array and returns the result", () => {
     const gl = createMockGL2();
     const previous = { tag: "previous" };
-    gl.bindVertexArray(previous as unknown as WebGLVertexArrayObject);
+    gl.bindVertexArray(previous);
 
     const vao = new VertexArray(gl);
     const result = vao.withBound(() => {
@@ -82,7 +82,7 @@ describe("VertexArray", () => {
   it("withBound restores the previous binding when the callback throws", () => {
     const gl = createMockGL2();
     const previous = { tag: "previous" };
-    gl.bindVertexArray(previous as unknown as WebGLVertexArrayObject);
+    gl.bindVertexArray(previous);
 
     const vao = new VertexArray(gl);
     expect(() =>
