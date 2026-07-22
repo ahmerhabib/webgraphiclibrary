@@ -1,8 +1,8 @@
 # webgraphiclibrary
 
 [![CI](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/webgraphiclibrary?tag=beta)](https://www.npmjs.com/package/webgraphiclibrary)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/webgraphiclibrary?tag=beta)](https://bundlephobia.com/package/webgraphiclibrary)
+[![npm version](https://img.shields.io/npm/v/webgraphiclibrary)](https://www.npmjs.com/package/webgraphiclibrary)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/webgraphiclibrary)](https://bundlephobia.com/package/webgraphiclibrary)
 [![types](https://img.shields.io/npm/types/webgraphiclibrary)](https://www.typescriptlang.org/)
 [![license](https://img.shields.io/npm/l/webgraphiclibrary)](LICENSE.md)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ahmerhabib/webgraphiclibrary/badge)](https://scorecard.dev/viewer/?uri=github.com/ahmerhabib/webgraphiclibrary)
@@ -72,6 +72,10 @@ Every image below is real output from the [examples](examples), captured in a he
 
 ![Multisample resolve comparison: aliased edges next to 4× MSAA](docs/screenshots/antialiasing-demo.png)
 
+**Instanced rendering** — 1,440 instances in one draw call: the attribute layout (including per-instance `divisor` attributes) is recorded once in a `VertexArray`, and the shared tint/rotation parameters stream through a `std140` `UniformBuffer`:
+
+![Instanced flow field: 1,440 instances drawn with one call through a VertexArray and UniformBuffer](docs/screenshots/instancing-demo.png)
+
 **Color-id picking** — draw ids into an off-screen `Framebuffer` and read one pixel back to identify the shape under the cursor:
 
 ![Color-id picking: the hovered shape highlighted with its id read back via readPixelsInto](docs/screenshots/picking-demo.png)
@@ -79,9 +83,9 @@ Every image below is real output from the [examples](examples), captured in a he
 ## Install
 
 ```bash
-npm install webgraphiclibrary@beta
+npm install webgraphiclibrary
 # or
-pnpm add webgraphiclibrary@beta
+pnpm add webgraphiclibrary
 ```
 
 ESM only. Requires a bundler or native ES modules and a `WebGLRenderingContext` or `WebGL2RenderingContext`.
@@ -262,8 +266,9 @@ Import from the root or from a per-resource subpath — both are tree-shakeable.
 import { Framebuffer, FBO } from "webgraphiclibrary/fbo";
 import { Shader } from "webgraphiclibrary/shader";
 import { Program } from "webgraphiclibrary/program";
-import { GLBuffer } from "webgraphiclibrary/buffer";
+import { GLBuffer, UniformBuffer } from "webgraphiclibrary/buffer";
 import { Texture2D, readTexturePixels, readTexturePixelsInto } from "webgraphiclibrary/texture";
+import { VertexArray } from "webgraphiclibrary/vao";
 import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphiclibrary/core";
 ```
 
@@ -272,8 +277,9 @@ import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphic
 | `…/fbo`     | `Framebuffer` (`FBO`), `MultiTarget`, `MultisampleTarget`          | off-screen color target (+ depth/stencil), `withBound`/`resize`/`readPixels(Into)`/`invalidate`; WebGL2 multiple render targets and multisample resolve |
 | `…/shader`  | `Shader`                                                           | compile with stage-annotated, source-numbered errors                                                                                                    |
 | `…/program` | `Program`                                                          | link, `withUsed`, cached uniform lookups, typed `setUniform*` / `setTexture`, `enableAttribute`                                                         |
-| `…/buffer`  | `GLBuffer`                                                         | typed uploads, `withBound`, `updateSubData` partial writes                                                                                              |
+| `…/buffer`  | `GLBuffer`, `UniformBuffer`                                        | typed uploads, `withBound`, `updateSubData` partial writes; WebGL2 std140 uniform blocks via `connect`/`bindTo`/`update`                                |
 | `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                                                                                |
+| `…/vao`     | `VertexArray`                                                      | WebGL2 VAO: record the attribute layout once, restore it with one bind                                                                                  |
 | `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                                                                                     |
 
 Copy-paste solutions to common tasks are in [docs/recipes.md](docs/recipes.md); per-module option/property/method tables live in [docs/](docs/) — see [docs/getting-started.md](docs/getting-started.md).
@@ -293,8 +299,9 @@ packages/core      Context checks, dimension guards, typed errors, binding save/
 packages/fbo       Framebuffer, MultiTarget, MultisampleTarget
 packages/shader    Shader compile wrapper
 packages/program   Program link + uniform/attribute helpers
-packages/buffer    Typed buffer upload wrapper
+packages/buffer    GLBuffer uploads + UniformBuffer std140 blocks
 packages/texture   Texture allocation, image upload, and readback
+packages/vao       VertexArray attribute-state recording
 examples           Browser examples that consume the built package
 scripts            Package verification and screenshot tooling
 ```
@@ -303,12 +310,11 @@ scripts            Package verification and screenshot tooling
 
 ## Roadmap
 
-- Uniform block / UBO helpers and a small optional math utility
-- Transform feedback and vertex-array (VAO) wrappers
+- Transform feedback wrapper and a small optional math utility
 - A live examples gallery
-- Investigate a backend-portable surface so a WebGPU path can be added without an API break
+- Investigate a backend-portable surface so a WebGPU path can be added without an API break — the wrappers already [map one-to-one onto WebGPU concepts](docs/comparison.md#webgpu-portability)
 
-Recently shipped: WebGL2 multiple render targets (`MultiTarget`) and multisample resolve (`MultisampleTarget`), real-browser render tests, and per-module documentation.
+Recently shipped: `VertexArray` (VAO) and `UniformBuffer` (std140 UBO) wrappers with an instanced-rendering example, WebGL2 multiple render targets (`MultiTarget`) and multisample resolve (`MultisampleTarget`), real-browser render tests, and TSDoc on every public export.
 
 ## Contributing
 

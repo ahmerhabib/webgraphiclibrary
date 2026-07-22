@@ -17,7 +17,9 @@ const SUBPATH_EXPORTS = {
     "Shader",
     "Program",
     "GLBuffer",
+    "UniformBuffer",
     "Texture2D",
+    "VertexArray",
     "readTexturePixels",
     "readTexturePixelsInto",
     "WebGLError",
@@ -35,8 +37,9 @@ const SUBPATH_EXPORTS = {
   "fbo.js": ["Framebuffer", "FBO"],
   "shader.js": ["Shader"],
   "program.js": ["Program"],
-  "buffer.js": ["GLBuffer"],
-  "texture.js": ["Texture2D", "readTexturePixels", "readTexturePixelsInto"]
+  "buffer.js": ["GLBuffer", "UniformBuffer"],
+  "texture.js": ["Texture2D", "readTexturePixels", "readTexturePixelsInto"],
+  "vao.js": ["VertexArray"]
 };
 
 await checkDistExports();
@@ -106,12 +109,13 @@ function checkPackedTarball() {
         'import { Framebuffer, FBO } from "webgraphiclibrary/fbo";',
         'import { Shader } from "webgraphiclibrary/shader";',
         'import { Program } from "webgraphiclibrary/program";',
-        'import { GLBuffer } from "webgraphiclibrary/buffer";',
+        'import { GLBuffer, UniformBuffer } from "webgraphiclibrary/buffer";',
         'import { Texture2D, readTexturePixels } from "webgraphiclibrary/texture";',
+        'import { VertexArray } from "webgraphiclibrary/vao";',
         'import { WebGLError } from "webgraphiclibrary/core";',
         'import * as root from "webgraphiclibrary";',
         "",
-        "const values = [Framebuffer, FBO, Shader, Program, GLBuffer, Texture2D, readTexturePixels, WebGLError];",
+        "const values = [Framebuffer, FBO, Shader, Program, GLBuffer, UniformBuffer, Texture2D, VertexArray, readTexturePixels, WebGLError];",
         'if (values.some((value) => typeof value !== "function")) {',
         '  throw new Error("A subpath export is missing from the packed tarball.");',
         "}",

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — instancing with VertexArray + UniformBuffer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #0b1017;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+      }
+      .card {
+        width: 1280px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      }
+      .frame {
+        position: relative;
+        line-height: 0;
+      }
+      canvas {
+        display: block;
+        width: 1280px;
+        height: 512px;
+      }
+      .tag {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        background: rgba(9, 14, 20, 0.72);
+        color: #eaf2ff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .caption {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        font-size: 14px;
+        color: #9db2c9;
+        border-top: 1px solid #1e2b3a;
+      }
+      .caption strong {
+        color: #eaf2ff;
+        font-weight: 650;
+      }
+      .pill {
+        font-size: 12.5px;
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.16);
+        border: 1px solid rgba(42, 143, 122, 0.4);
+        padding: 4px 10px;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="frame">
+        <canvas id="scene" width="1280" height="512"></canvas>
+        <span class="tag">1 draw call — 1,440 instances</span>
+      </div>
+      <div class="caption">
+        <span
+          ><strong>Instancing</strong> — attribute state recorded once in a
+          <code>VertexArray</code>, shared params streamed through a std140
+          <code>UniformBuffer</code></span
+        >
+        <span class="pill">VertexArray · UniformBuffer · divisor: 1</span>
+      </div>
+    </div>
+
+    <script type="module">
+      import { Shader } from "../../dist/shader.js";
+      import { Program } from "../../dist/program.js";
+      import { GLBuffer, UniformBuffer } from "../../dist/buffer.js";
+      import { VertexArray } from "../../dist/vao.js";
+
+      const canvas = document.querySelector("#scene");
+      const gl = canvas.getContext("webgl2", { antialias: true });
+      if (gl === null) throw new Error("WebGL2 is not available.");
+
+      const program = new Program(gl, {
+        vertexShader: new Shader(gl, {
+          type: gl.VERTEX_SHADER,
+          source: `#version 300 es
+            in vec2 position;
+            in vec2 offset;
+            in float seed;
+            uniform Params {
+              vec4 tintA;
+              vec4 tintB;
+              vec2 spin; // (base rotation, base scale)
+            };
+            out vec3 color;
+            void main() {
+              float angle = spin.x + seed * 6.28318;
+              float scale = spin.y * (0.6 + 0.4 * seed);
+              mat2 rotate = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+              vec2 p = rotate * position * scale + offset;
+              color = mix(tintA.rgb, tintB.rgb, seed);
+              gl_Position = vec4(p.x / 2.5, p.y, 0.0, 1.0);
+            }`
+        }),
+        fragmentShader: new Shader(gl, {
+          type: gl.FRAGMENT_SHADER,
+          source: `#version 300 es
+            precision highp float;
+            in vec3 color;
+            out vec4 frag;
+            void main() { frag = vec4(color, 1.0); }`
+        })
+      });
+
+      // Base geometry: one slim triangle, shared by every instance.
+      const blade = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: new Float32Array([0, 0.09, -0.028, -0.06, 0.028, -0.06])
+      });
+
+      // Per-instance data: a grid of offsets plus a deterministic seed that
+      // drives each instance's rotation, scale, and color.
+      const COLUMNS = 60;
+      const ROWS = 24;
+      const COUNT = COLUMNS * ROWS;
+      const instances = new Float32Array(COUNT * 3);
+      for (let y = 0; y < ROWS; y += 1) {
+        for (let x = 0; x < COLUMNS; x += 1) {
+          const i = (y * COLUMNS + x) * 3;
+          instances[i] = ((x + 0.5) / COLUMNS) * 5 - 2.5;
+          instances[i + 1] = ((y + 0.5) / ROWS) * 2 - 1;
+          // A smooth wave field: neighboring seeds stay close, so rotation,
+          // scale, and color flow across the grid instead of looking random.
+          instances[i + 2] = 0.5 + 0.5 * Math.sin(x * 0.19 + y * 0.16 + Math.cos(y * 0.11) * 2);
+        }
+      }
+      const instanceBuffer = new GLBuffer(gl, {
+        target: gl.ARRAY_BUFFER,
+        data: instances
+      });
+
+      // Record the whole attribute layout once. Binding the VAO afterwards
+      // restores every pointer, enable flag, and divisor with one call.
+      const vao = new VertexArray(gl);
+      vao.withBound(() => {
+        program.enableAttribute("position", { buffer: blade, size: 2 });
+        program.enableAttribute("offset", {
+          buffer: instanceBuffer,
+          size: 2,
+          stride: 12,
+          offset: 0,
+          divisor: 1
+        });
+        program.enableAttribute("seed", {
+          buffer: instanceBuffer,
+          size: 1,
+          stride: 12,
+          offset: 8,
+          divisor: 1
+        });
+      });
+
+      // Shared parameters live in one std140 uniform block: two tint colors
+      // and the (rotation, scale) pair. `update()` re-streams them per frame.
+      const params = new UniformBuffer(gl, { data: 48 });
+      params.connect(program, "Params", 0);
+      params.bindTo(0);
+
+      const frame = new Float32Array(12);
+      frame.set([0.36, 0.86, 0.78, 1], 0); // tintA — teal
+      frame.set([0.72, 0.42, 0.98, 1], 4); // tintB — violet
+      frame.set([0.65, 1.05], 8); // (rotation, scale)
+      params.update(frame);
+
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0.043, 0.055, 0.09, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      program.withUsed(() => {
+        vao.withBound(() => {
+          gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, COUNT);
+        });
+      });
+
+      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+    </script>
+  </body>
+</html>

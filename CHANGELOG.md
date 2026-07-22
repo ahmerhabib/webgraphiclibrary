@@ -2,6 +2,20 @@
 
 All notable changes to this package are documented here.
 
+## 2.0.0-beta.3 — 2026-07-22
+
+### Added
+
+- `VertexArray` (WebGL2 VAO) via the new `webgraphiclibrary/vao` subpath: record the vertex attribute layout — pointers, enable flags, instancing divisors, and the `ELEMENT_ARRAY_BUFFER` binding — once inside `withBound`, then restore it all with one bind at draw time.
+- `UniformBuffer` (WebGL2 UBO) exported from `webgraphiclibrary/buffer`: `std140` uniform blocks shared across programs with `connect(program, blockName, index)`, `bindTo`/`bindRange`, and validated `update(data, byteOffset?)` partial writes.
+- An [instancing example](examples/instancing) rendering 1,440 instances in one draw call through a `VertexArray` + `UniformBuffer`, with a real captured screenshot in the README, the examples gallery, and browser self-test coverage for both wrappers.
+- A [WebGPU portability map](docs/comparison.md#webgpu-portability) documenting how each wrapper corresponds to a WebGPU concept.
+
+### Changed
+
+- Releases now publish under the `latest` dist-tag, so `npm install webgraphiclibrary` and the npm package page always reflect the newest version.
+- The examples README is now a visual gallery with real captured output for each showcase example.
+
 ## 2.0.0-beta.2 — 2026-07-17
 
 ### Added
