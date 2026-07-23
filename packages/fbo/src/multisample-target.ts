@@ -2,6 +2,7 @@ import {
   WebGLError,
   assertNotDisposed,
   assertPositiveIntegerDimension,
+  enableFloatInternalFormatRendering,
   isWebGL2,
   isWebGLContext,
   withSavedBindings as saveBindings
@@ -103,6 +104,7 @@ export class MultisampleTarget {
     this.height = assertPositiveIntegerDimension("height", options.height);
     this.stencil = options.stencil ?? false;
     this.colorFormat = options.internalFormat ?? gl.RGBA8;
+    enableFloatInternalFormatRendering(gl, this.colorFormat);
     this.resolveConfig = {
       minFilter: options.minFilter ?? gl.LINEAR,
       magFilter: options.magFilter ?? gl.LINEAR,
@@ -236,7 +238,7 @@ export class MultisampleTarget {
 
   /**
    * Reallocate the color, depth, and resolve storage to a new size. On failure
-   * the previous dimensions are restored.
+   * the previous dimensions and storage are restored.
    *
    * @throws {TypeError} if the dimensions are not positive integers.
    * @throws {WebGLError} if either resized framebuffer is incomplete.
@@ -263,6 +265,8 @@ export class MultisampleTarget {
       } catch (error) {
         this.width = previousWidth;
         this.height = previousHeight;
+        this.allocateColorStorage();
+        this.allocateResolveTexture();
         throw error;
       }
     });
@@ -430,12 +434,19 @@ export class MultisampleTarget {
   private withSavedBindings<T>(operation: () => T): T {
     const gl = this.gl;
 
+    // `bindFramebuffer(FRAMEBUFFER, ...)` sets both the draw and read binding
+    // points on WebGL2, so the read binding is restored separately afterwards.
     return saveBindings(
       gl,
       [
         {
           binding: gl.FRAMEBUFFER_BINDING,
           restore: (value) => gl.bindFramebuffer(gl.FRAMEBUFFER, value as WebGLFramebuffer | null)
+        },
+        {
+          binding: gl.READ_FRAMEBUFFER_BINDING,
+          restore: (value) =>
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, value as WebGLFramebuffer | null)
         },
         {
           binding: gl.TEXTURE_BINDING_2D,

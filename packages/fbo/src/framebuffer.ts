@@ -2,6 +2,7 @@ import {
   WebGLError,
   assertNotDisposed,
   assertPositiveIntegerDimension,
+  enableFloatColorRendering,
   getFramebufferStatusMessage,
   isWebGL2,
   isWebGLContext,
@@ -117,7 +118,7 @@ export class Framebuffer {
     this.renderbuffer = null;
 
     try {
-      this.enableFloatRenderTarget();
+      enableFloatColorRendering(gl, this.options.type);
       this.renderbuffer = this.createRenderbuffer();
       this.withSavedBindings(() => {
         this.configureAttachments();
@@ -164,8 +165,9 @@ export class Framebuffer {
   }
 
   /**
-   * Reallocate the color (and depth/stencil) storage to a new size. Reverts the
-   * dimensions and rethrows if the resized framebuffer is incomplete.
+   * Reallocate the color (and depth/stencil) storage to a new size. If the
+   * resized framebuffer is incomplete, the previous dimensions and storage are
+   * restored before rethrowing.
    * @throws {RangeError | TypeError} for invalid dimensions.
    */
   public resize(options: FramebufferResizeOptions): void {
@@ -181,16 +183,12 @@ export class Framebuffer {
 
       try {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
-        this.allocateTextureStorage();
-
-        if (this.renderbuffer !== null) {
-          this.allocateRenderbufferStorage();
-        }
-
+        this.allocateStorage();
         this.assertComplete();
       } catch (error) {
         this.width = previousWidth;
         this.height = previousHeight;
+        this.allocateStorage();
         throw error;
       }
     });
@@ -291,26 +289,6 @@ export class Framebuffer {
     return attachments;
   }
 
-  private enableFloatRenderTarget(): void {
-    const gl = this.gl;
-    const type = this.options.type;
-    const halfFloat = "HALF_FLOAT" in gl ? gl.HALF_FLOAT : 0x8d61;
-
-    if (type !== gl.FLOAT && type !== halfFloat) {
-      return;
-    }
-
-    if (isWebGL2(gl)) {
-      gl.getExtension("EXT_color_buffer_float");
-    } else if (type === gl.FLOAT) {
-      gl.getExtension("OES_texture_float");
-      gl.getExtension("WEBGL_color_buffer_float");
-    } else {
-      gl.getExtension("OES_texture_half_float");
-      gl.getExtension("EXT_color_buffer_half_float");
-    }
-  }
-
   private createRenderbuffer(): WebGLRenderbuffer | null {
     if (!this.options.depth && !this.options.stencil) {
       return null;
@@ -335,6 +313,14 @@ export class Framebuffer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, this.options.wrapT);
     this.allocateTextureStorage();
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
+
+    if (this.renderbuffer !== null) {
+      this.allocateRenderbufferStorage();
+    }
+  }
+
+  private allocateStorage(): void {
+    this.allocateTextureStorage();
 
     if (this.renderbuffer !== null) {
       this.allocateRenderbufferStorage();
@@ -389,6 +375,19 @@ export class Framebuffer {
   private withSavedBindings<T>(operation: () => T): T {
     const gl = this.gl;
 
+    // On WebGL2, `bindFramebuffer(FRAMEBUFFER, ...)` sets both the draw and
+    // read binding points, so the read binding must be captured and restored
+    // separately (after the combined restore, which clobbers it again).
+    const readSlot = isWebGL2(gl)
+      ? [
+          {
+            binding: gl.READ_FRAMEBUFFER_BINDING,
+            restore: (value: unknown) =>
+              gl.bindFramebuffer(gl.READ_FRAMEBUFFER, value as WebGLFramebuffer | null)
+          }
+        ]
+      : [];
+
     return saveBindings(
       gl,
       [
@@ -396,6 +395,7 @@ export class Framebuffer {
           binding: gl.FRAMEBUFFER_BINDING,
           restore: (value) => gl.bindFramebuffer(gl.FRAMEBUFFER, value as WebGLFramebuffer | null)
         },
+        ...readSlot,
         {
           binding: gl.TEXTURE_BINDING_2D,
           restore: (value) => gl.bindTexture(gl.TEXTURE_2D, value as WebGLTexture | null)

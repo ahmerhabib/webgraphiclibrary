@@ -2,6 +2,8 @@ import {
   WebGLError,
   assertNotDisposed,
   assertPositiveIntegerDimension,
+  enableFloatColorRendering,
+  enableFloatInternalFormatRendering,
   isWebGL2,
   isWebGLContext,
   withSavedBindings as saveBindings
@@ -110,6 +112,11 @@ export class MultiTarget {
     this.stencil = options.stencil ?? false;
     this.specs = resolveAttachments(gl, options.attachments ?? 2);
 
+    for (const spec of this.specs) {
+      enableFloatColorRendering(gl, spec.type);
+      enableFloatInternalFormatRendering(gl, spec.internalFormat);
+    }
+
     const framebuffer = gl.createFramebuffer() as WebGLFramebuffer | null;
     if (framebuffer === null) {
       throw new WebGLError("Failed to create framebuffer.");
@@ -185,7 +192,7 @@ export class MultiTarget {
 
   /**
    * Reallocate every attachment to a new size. On failure the previous
-   * dimensions are restored.
+   * dimensions and storage are restored.
    *
    * @throws {TypeError} if the dimensions are not positive integers.
    * @throws {WebGLError} if the resized framebuffer is incomplete.
@@ -203,16 +210,12 @@ export class MultiTarget {
 
       try {
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.framebuffer);
-        for (let i = 0; i < this.textures.length; i += 1) {
-          this.allocateTexture(i);
-        }
-        if (this.renderbuffer !== null) {
-          this.allocateRenderbuffer();
-        }
+        this.allocateStorage();
         this.assertComplete();
       } catch (error) {
         this.width = previousWidth;
         this.height = previousHeight;
+        this.allocateStorage();
         throw error;
       }
     });
@@ -314,6 +317,15 @@ export class MultiTarget {
     }
   }
 
+  private allocateStorage(): void {
+    for (let i = 0; i < this.textures.length; i += 1) {
+      this.allocateTexture(i);
+    }
+    if (this.renderbuffer !== null) {
+      this.allocateRenderbuffer();
+    }
+  }
+
   private allocateTexture(index: number): void {
     const gl = this.gl;
     const spec = this.specs[index] as ResolvedAttachment;
@@ -356,12 +368,19 @@ export class MultiTarget {
   private withSavedBindings<T>(operation: () => T): T {
     const gl = this.gl;
 
+    // `bindFramebuffer(FRAMEBUFFER, ...)` sets both the draw and read binding
+    // points on WebGL2, so the read binding is restored separately afterwards.
     return saveBindings(
       gl,
       [
         {
           binding: gl.FRAMEBUFFER_BINDING,
           restore: (value) => gl.bindFramebuffer(gl.FRAMEBUFFER, value as WebGLFramebuffer | null)
+        },
+        {
+          binding: gl.READ_FRAMEBUFFER_BINDING,
+          restore: (value) =>
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, value as WebGLFramebuffer | null)
         },
         {
           binding: gl.TEXTURE_BINDING_2D,

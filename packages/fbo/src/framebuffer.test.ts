@@ -9,12 +9,15 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
   const texture = { type: "texture" };
   const renderbuffer = { type: "renderbuffer" };
   let framebufferBinding: unknown = null;
+  let readFramebufferBinding: unknown = null;
   let textureBinding: unknown = null;
   let renderbufferBinding: unknown = null;
 
   const gl = {
     calls,
     FRAMEBUFFER: 0x8d40,
+    READ_FRAMEBUFFER: 0x8ca8,
+    READ_FRAMEBUFFER_BINDING: 0x8caa,
     RENDERBUFFER: 0x8d41,
     TEXTURE_2D: 0x0de1,
     COLOR_ATTACHMENT0: 0x8ce0,
@@ -47,7 +50,14 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
       return {};
     },
     bindFramebuffer: (...args: unknown[]) => {
-      framebufferBinding = args[1];
+      // Per the WebGL2 spec, FRAMEBUFFER sets both binding points.
+      if (args[0] === gl.FRAMEBUFFER) {
+        framebufferBinding = args[1];
+        readFramebufferBinding = args[1];
+      }
+      if (args[0] === gl.READ_FRAMEBUFFER) {
+        readFramebufferBinding = args[1];
+      }
       calls.push(["bindFramebuffer", ...args]);
     },
     bindTexture: (...args: unknown[]) => {
@@ -61,6 +71,10 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     getParameter: (parameter: number) => {
       if (parameter === gl.FRAMEBUFFER_BINDING) {
         return framebufferBinding;
+      }
+
+      if (parameter === gl.READ_FRAMEBUFFER_BINDING) {
+        return readFramebufferBinding;
       }
 
       if (parameter === gl.TEXTURE_BINDING_2D) {
@@ -85,7 +99,11 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     deleteTexture: (...args: unknown[]) => calls.push(["deleteTexture", ...args]),
     deleteRenderbuffer: (...args: unknown[]) => calls.push(["deleteRenderbuffer", ...args]),
     ...overrides
-  } as unknown as WebGLRenderingContext & { calls: Call[] };
+  } as unknown as WebGLRenderingContext & {
+    calls: Call[];
+    READ_FRAMEBUFFER: number;
+    READ_FRAMEBUFFER_BINDING: number;
+  };
 
   return gl;
 }
@@ -273,6 +291,39 @@ describe("Framebuffer", () => {
     expect(() => framebuffer.resize({ width: 32, height: 24 })).toThrow("allocation failed");
     expect(framebuffer.width).toBe(16);
     expect(framebuffer.height).toBe(16);
+  });
+
+  it("reallocates storage at the previous size when a resize fails", () => {
+    let fail = false;
+    const gl = createMockGL({
+      checkFramebufferStatus: () => (fail ? 0x8cd6 : 0x8cd5)
+    });
+    const framebuffer = new Framebuffer(gl, { width: 16, height: 16, depth: true });
+
+    fail = true;
+    expect(() => framebuffer.resize({ width: 32, height: 24 })).toThrow();
+
+    expect(framebuffer.width).toBe(16);
+    expect(framebuffer.height).toBe(16);
+    const texImageCalls = gl.calls.filter(([name]) => name === "texImage2D");
+    const lastTexImage = texImageCalls[texImageCalls.length - 1] as unknown[];
+    expect(lastTexImage[4]).toBe(16);
+    expect(lastTexImage[5]).toBe(16);
+    const storageCalls = gl.calls.filter(([name]) => name === "renderbufferStorage");
+    const lastStorage = storageCalls[storageCalls.length - 1] as unknown[];
+    expect(lastStorage[3]).toBe(16);
+    expect(lastStorage[4]).toBe(16);
+  });
+
+  it("restores the read framebuffer binding around withBound on WebGL2", () => {
+    const gl = createMockGL({ texStorage2D: () => undefined });
+    const framebuffer = new Framebuffer(gl, { width: 8, height: 8 });
+    const previousRead = { type: "read-framebuffer" };
+    gl.bindFramebuffer(0x8ca8, previousRead);
+
+    framebuffer.withBound(() => undefined);
+
+    expect(gl.getParameter(0x8caa)).toBe(previousRead);
   });
 
   it("resizes from canvas dimensions", () => {

@@ -9,9 +9,14 @@ function createMockGL2(overrides: Record<string, unknown> = {}) {
   let textureBinding: unknown = null;
   let renderbufferBinding: unknown = null;
 
+  let readFramebufferBinding: unknown = null;
+
   const gl = {
     calls,
     FRAMEBUFFER: 0x8d40,
+    READ_FRAMEBUFFER: 0x8ca8,
+    READ_FRAMEBUFFER_BINDING: 0x8caa,
+    RGBA16F: 0x881a,
     RENDERBUFFER: 0x8d41,
     TEXTURE_2D: 0x0de1,
     COLOR_ATTACHMENT0: 0x8ce0,
@@ -39,8 +44,17 @@ function createMockGL2(overrides: Record<string, unknown> = {}) {
     createTexture: () => ({ tag: "texture" }),
     createRenderbuffer: () => ({ tag: "renderbuffer" }),
     bindFramebuffer: (target: number, value: unknown) => {
-      if (target === gl.FRAMEBUFFER) framebufferBinding = value;
+      // Per the WebGL2 spec, FRAMEBUFFER sets both binding points.
+      if (target === gl.FRAMEBUFFER) {
+        framebufferBinding = value;
+        readFramebufferBinding = value;
+      }
+      if (target === gl.READ_FRAMEBUFFER) readFramebufferBinding = value;
       calls.push(["bindFramebuffer", target, value]);
+    },
+    getExtension: (name: string) => {
+      calls.push(["getExtension", name]);
+      return {};
     },
     bindTexture: (target: number, value: unknown) => {
       if (target === gl.TEXTURE_2D) textureBinding = value;
@@ -62,6 +76,7 @@ function createMockGL2(overrides: Record<string, unknown> = {}) {
     checkFramebufferStatus: () => 0x8cd5,
     getParameter: (parameter: number) => {
       if (parameter === gl.FRAMEBUFFER_BINDING) return framebufferBinding;
+      if (parameter === gl.READ_FRAMEBUFFER_BINDING) return readFramebufferBinding;
       if (parameter === gl.TEXTURE_BINDING_2D) return textureBinding;
       if (parameter === gl.RENDERBUFFER_BINDING) return renderbufferBinding;
       if (parameter === gl.MAX_COLOR_ATTACHMENTS) return 8;
@@ -238,6 +253,59 @@ describe("MultiTarget", () => {
     expect(() => new MultiTarget(gl, { width: 2, height: 2, attachments: 3 })).toThrow();
     expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(1);
     expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(3);
+  });
+
+  it("requests EXT_color_buffer_float for float and half-float attachments", () => {
+    const gl = createMockGL2();
+    new MultiTarget(gl, { width: 2, height: 2, attachments: [{ type: gl.FLOAT }] });
+    expect(gl.calls).toContainEqual(["getExtension", "EXT_color_buffer_float"]);
+
+    const gl2 = createMockGL2();
+    new MultiTarget(gl2, {
+      width: 2,
+      height: 2,
+      attachments: [{ internalFormat: gl2.RGBA16F }]
+    });
+    expect(gl2.calls).toContainEqual(["getExtension", "EXT_color_buffer_float"]);
+
+    const gl3 = createMockGL2();
+    new MultiTarget(gl3, { width: 2, height: 2 });
+    expect(gl3.calls.some(([name]) => name === "getExtension")).toBe(false);
+  });
+
+  it("restores the read framebuffer binding around withBound", () => {
+    const gl = createMockGL2();
+    const target = new MultiTarget(gl, { width: 2, height: 2 });
+    const previousRead = { tag: "read-framebuffer" };
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, previousRead);
+
+    target.withBound(() => undefined);
+
+    expect(gl.getParameter(gl.READ_FRAMEBUFFER_BINDING)).toBe(previousRead);
+  });
+
+  it("reallocates storage at the previous size when a resize fails", () => {
+    let fail = false;
+    const gl = createMockGL2({
+      checkFramebufferStatus: () => (fail ? 0x8cd6 : 0x8cd5)
+    });
+    const target = new MultiTarget(gl, { width: 4, height: 4, attachments: 2, depth: true });
+
+    fail = true;
+    expect(() => target.resize({ width: 8, height: 8 })).toThrow();
+
+    expect(target.width).toBe(4);
+    expect(target.height).toBe(4);
+    const texImageCalls = gl.calls.filter(([name]) => name === "texImage2D");
+    const lastTwo = texImageCalls.slice(-2);
+    for (const call of lastTwo) {
+      expect(call[4]).toBe(4);
+      expect(call[5]).toBe(4);
+    }
+    const storageCalls = gl.calls.filter(([name]) => name === "renderbufferStorage");
+    const lastStorage = storageCalls[storageCalls.length - 1] as unknown[];
+    expect(lastStorage[3]).toBe(4);
+    expect(lastStorage[4]).toBe(4);
   });
 
   it("rejects operations after disposal", () => {

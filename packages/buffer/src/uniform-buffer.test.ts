@@ -96,6 +96,14 @@ describe("UniformBuffer", () => {
     );
   });
 
+  it("update rejects a negative or non-integer byte offset", () => {
+    const gl = createMockGL2();
+    const ubo = new UniformBuffer(gl, { data: 64 });
+
+    expect(() => ubo.update(new Float32Array([1, 2]), -8)).toThrow(RangeError);
+    expect(() => ubo.update(new Float32Array([1, 2]), 1.5)).toThrow(RangeError);
+  });
+
   it("bindTo binds the buffer to an indexed binding point", () => {
     const gl = createMockGL2();
     const ubo = new UniformBuffer(gl, { data: 32 });
@@ -110,6 +118,19 @@ describe("UniformBuffer", () => {
 
     ubo.bindRange(1, 64, 128);
     expect(gl.calls).toContainEqual(["bindBufferRange", gl.UNIFORM_BUFFER, 1, ubo.buffer, 64, 128]);
+  });
+
+  it("bindRange rejects invalid or out-of-bounds ranges", () => {
+    const gl = createMockGL2();
+    const ubo = new UniformBuffer(gl, { data: 256 });
+
+    expect(() => ubo.bindRange(0, -16, 64)).toThrow(RangeError);
+    expect(() => ubo.bindRange(0, 0.5, 64)).toThrow(RangeError);
+    expect(() => ubo.bindRange(0, 0, 0)).toThrow(RangeError);
+    expect(() => ubo.bindRange(0, 200, 128)).toThrow(
+      "Range of 128 bytes at offset 200 exceeds the buffer's 256 bytes."
+    );
+    expect(gl.calls.some(([name]) => name === "bindBufferRange")).toBe(false);
   });
 
   it("connect maps a named uniform block to a binding point", () => {

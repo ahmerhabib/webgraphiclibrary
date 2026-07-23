@@ -1,4 +1,4 @@
-import { WebGLError, assertNotDisposed, isWebGLContext } from "../../core/src/index";
+import { WebGLError, assertNotDisposed, isWebGL2, isWebGLContext } from "../../core/src/index";
 import type { GLContext } from "../../core/src/index";
 
 /**
@@ -9,7 +9,10 @@ export type BufferData = BufferSource | number;
 
 /** Options for {@link GLBuffer}. */
 export interface GLBufferOptions {
-  /** Bind target, e.g. `gl.ARRAY_BUFFER` or `gl.ELEMENT_ARRAY_BUFFER`. */
+  /**
+   * Bind target: `gl.ARRAY_BUFFER` or `gl.ELEMENT_ARRAY_BUFFER` (WebGL2 also
+   * accepts the copy, pixel, transform-feedback, and uniform buffer targets).
+   */
   target: number;
   /** Usage hint. Defaults to `gl.STATIC_DRAW`. */
   usage?: number;
@@ -35,18 +38,27 @@ export class GLBuffer {
 
   private isDisposed = false;
 
+  private readonly bindingParameter: number;
+
   /**
    * Create a buffer, optionally uploading initial data.
    * @throws {TypeError} if `gl` is not a WebGL rendering context.
-   * @throws {WebGLError} if the buffer cannot be created.
+   * @throws {WebGLError} if `target` is not a valid buffer target for this
+   *   context, or the buffer cannot be created.
    */
   constructor(gl: GLContext, options: GLBufferOptions) {
     if (!isWebGLContext(gl)) {
       throw new TypeError("gl must be a WebGL rendering context.");
     }
 
+    const bindingParameter = bindingParameterForTarget(gl, options.target);
+    if (bindingParameter === undefined) {
+      throw new WebGLError(`Unsupported buffer target ${options.target} for this context.`);
+    }
+
     this.gl = gl;
     this.target = options.target;
+    this.bindingParameter = bindingParameter;
     this.usage = options.usage ?? gl.STATIC_DRAW;
 
     const buffer = gl.createBuffer() as WebGLBuffer | null;
@@ -167,14 +179,34 @@ export class GLBuffer {
   }
 
   private captureBinding(): WebGLBuffer | null {
-    if (this.target === this.gl.ARRAY_BUFFER) {
-      return this.gl.getParameter(this.gl.ARRAY_BUFFER_BINDING) as WebGLBuffer | null;
-    }
-
-    if (this.target === this.gl.ELEMENT_ARRAY_BUFFER) {
-      return this.gl.getParameter(this.gl.ELEMENT_ARRAY_BUFFER_BINDING) as WebGLBuffer | null;
-    }
-
-    return null;
+    return this.gl.getParameter(this.bindingParameter) as WebGLBuffer | null;
   }
+}
+
+function bindingParameterForTarget(gl: GLContext, target: number): number | undefined {
+  if (target === gl.ARRAY_BUFFER) {
+    return gl.ARRAY_BUFFER_BINDING;
+  }
+  if (target === gl.ELEMENT_ARRAY_BUFFER) {
+    return gl.ELEMENT_ARRAY_BUFFER_BINDING;
+  }
+
+  if (isWebGL2(gl)) {
+    switch (target) {
+      case gl.COPY_READ_BUFFER:
+        return gl.COPY_READ_BUFFER_BINDING;
+      case gl.COPY_WRITE_BUFFER:
+        return gl.COPY_WRITE_BUFFER_BINDING;
+      case gl.PIXEL_PACK_BUFFER:
+        return gl.PIXEL_PACK_BUFFER_BINDING;
+      case gl.PIXEL_UNPACK_BUFFER:
+        return gl.PIXEL_UNPACK_BUFFER_BINDING;
+      case gl.TRANSFORM_FEEDBACK_BUFFER:
+        return gl.TRANSFORM_FEEDBACK_BUFFER_BINDING;
+      case gl.UNIFORM_BUFFER:
+        return gl.UNIFORM_BUFFER_BINDING;
+    }
+  }
+
+  return undefined;
 }

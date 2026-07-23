@@ -23,6 +23,7 @@ function createMockGL2(overrides: Record<string, unknown> = {}) {
     COLOR_BUFFER_BIT: 0x4000,
     RGBA: 0x1908,
     RGBA8: 0x8058,
+    RGBA16F: 0x881a,
     UNSIGNED_BYTE: 0x1401,
     DEPTH_COMPONENT24: 0x81a6,
     DEPTH24_STENCIL8: 0x88f0,
@@ -40,6 +41,10 @@ function createMockGL2(overrides: Record<string, unknown> = {}) {
     RENDERBUFFER_BINDING: 0x8ca7,
     MAX_SAMPLES: 0x8d57,
     texStorage2D: () => undefined,
+    getExtension: (name: string) => {
+      calls.push(["getExtension", name]);
+      return {};
+    },
     createFramebuffer: () => ({ tag: "framebuffer" }),
     createTexture: () => ({ tag: "texture" }),
     createRenderbuffer: () => ({ tag: "renderbuffer" }),
@@ -228,6 +233,49 @@ describe("MultisampleTarget", () => {
     expect(gl.calls.filter(([name]) => name === "deleteFramebuffer")).toHaveLength(2);
     expect(gl.calls.filter(([name]) => name === "deleteRenderbuffer")).toHaveLength(2);
     expect(gl.calls.filter(([name]) => name === "deleteTexture")).toHaveLength(1);
+  });
+
+  it("requests EXT_color_buffer_float for float color formats only", () => {
+    const gl = createMockGL2();
+    new MultisampleTarget(gl, { width: 2, height: 2, internalFormat: gl.RGBA16F });
+    expect(gl.calls).toContainEqual(["getExtension", "EXT_color_buffer_float"]);
+
+    const gl2 = createMockGL2();
+    new MultisampleTarget(gl2, { width: 2, height: 2 });
+    expect(gl2.calls.some(([name]) => name === "getExtension")).toBe(false);
+  });
+
+  it("restores the read framebuffer binding around withBound", () => {
+    const gl = createMockGL2();
+    const target = new MultisampleTarget(gl, { width: 2, height: 2 });
+    const previousRead = { tag: "read-framebuffer" };
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, previousRead);
+
+    target.withBound(() => undefined);
+
+    expect(gl.getParameter(gl.READ_FRAMEBUFFER_BINDING)).toBe(previousRead);
+  });
+
+  it("reallocates storage at the previous size when a resize fails", () => {
+    let fail = false;
+    const gl = createMockGL2({
+      checkFramebufferStatus: () => (fail ? 0x8cd6 : 0x8cd5)
+    });
+    const target = new MultisampleTarget(gl, { width: 4, height: 4, depth: true });
+
+    fail = true;
+    expect(() => target.resize({ width: 8, height: 8 })).toThrow();
+
+    expect(target.width).toBe(4);
+    expect(target.height).toBe(4);
+    const storageCalls = gl.calls.filter(([name]) => name === "renderbufferStorageMultisample");
+    const lastStorage = storageCalls[storageCalls.length - 1] as unknown[];
+    expect(lastStorage[4]).toBe(4);
+    expect(lastStorage[5]).toBe(4);
+    const texImageCalls = gl.calls.filter(([name]) => name === "texImage2D");
+    const lastTexImage = texImageCalls[texImageCalls.length - 1] as unknown[];
+    expect(lastTexImage[4]).toBe(4);
+    expect(lastTexImage[5]).toBe(4);
   });
 
   it("binds and unbinds the draw framebuffer", () => {
