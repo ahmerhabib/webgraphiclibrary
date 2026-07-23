@@ -286,6 +286,30 @@ describe("Texture2D", () => {
     expect(gl.getParameter(gl.TEXTURE_BINDING_2D)).toBe(previous);
   });
 
+  it("rejects an image source with a zero dimension", () => {
+    const gl = createMockGL();
+    const texture = new Texture2D(gl, { width: 4, height: 4 });
+    const callsBefore = gl.calls.length;
+
+    expect(() => texture.uploadImage({ width: 0, height: 0 } as unknown as ImageBitmap)).toThrow(
+      "zero dimension"
+    );
+    expect(gl.calls.slice(callsBefore).some(([name]) => name === "texImage2D")).toBe(false);
+    expect(texture.width).toBe(4);
+    expect(texture.height).toBe(4);
+  });
+
+  it("does not touch the framebuffer binding during upload or mipmap generation", () => {
+    const gl = createMockGL();
+    const texture = new Texture2D(gl, { width: 4, height: 4 });
+    const callsBefore = gl.calls.length;
+
+    texture.upload({ width: 8, height: 8 });
+    texture.generateMipmap();
+
+    expect(gl.calls.slice(callsBefore).some(([name]) => name === "bindFramebuffer")).toBe(false);
+  });
+
   it("disposes once and rejects upload after disposal", () => {
     const gl = createMockGL();
     const texture = new Texture2D(gl, { width: 8, height: 4 });

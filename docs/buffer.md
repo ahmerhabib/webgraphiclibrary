@@ -16,11 +16,11 @@ vertices.updateSubData(0, new Float32Array([-0.5, -0.5]));
 
 ## Constructor options
 
-| Option   | Type                     | Default          | Notes                                          |
-| -------- | ------------------------ | ---------------- | ---------------------------------------------- |
-| `target` | `number`                 | required         | `gl.ARRAY_BUFFER` or `gl.ELEMENT_ARRAY_BUFFER` |
-| `usage`  | `number`                 | `gl.STATIC_DRAW` | Usage hint                                     |
-| `data`   | `BufferSource \| number` | —                | Initial data, or a byte size to allocate       |
+| Option   | Type                     | Default          | Notes                                                                                                                        |
+| -------- | ------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `target` | `number`                 | required         | `gl.ARRAY_BUFFER` or `gl.ELEMENT_ARRAY_BUFFER`; WebGL2 also accepts the copy, pixel, transform-feedback, and uniform targets |
+| `usage`  | `number`                 | `gl.STATIC_DRAW` | Usage hint                                                                                                                   |
+| `data`   | `BufferSource \| number` | —                | Initial data, or a byte size to allocate                                                                                     |
 
 ## Properties
 

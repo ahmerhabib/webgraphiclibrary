@@ -423,4 +423,24 @@ describe("Program", () => {
     expect(gl.calls.filter(([name]) => name === "deleteProgram")).toHaveLength(1);
     expect(() => program.use()).toThrow("Program has been disposed.");
   });
+
+  it("setTexture rejects a disposed program before touching GL state", () => {
+    const gl = createMockGL();
+    const program = new Program(gl, {
+      vertexShader: gl.vertexShader,
+      fragmentShader: gl.fragmentShader
+    });
+
+    program.dispose();
+    const callsBefore = gl.calls.length;
+
+    expect(() => program.setTexture("source", { type: "texture" }, 0)).toThrow(
+      "Program has been disposed."
+    );
+    expect(
+      gl.calls
+        .slice(callsBefore)
+        .some(([name]) => name === "activeTexture" || name === "bindTexture")
+    ).toBe(false);
+  });
 });

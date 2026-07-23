@@ -29,6 +29,50 @@ export function isWebGL2(gl: GLContext): gl is WebGL2RenderingContext {
   return "texStorage2D" in gl && typeof gl.texStorage2D === "function";
 }
 
+/**
+ * Enable the extensions that make float / half-float color attachments
+ * renderable for the given pixel `type`. No-op for other types; safe to call
+ * repeatedly (`getExtension` is idempotent).
+ */
+export function enableFloatColorRendering(gl: GLContext, type: number): void {
+  const halfFloat = "HALF_FLOAT" in gl ? gl.HALF_FLOAT : 0x8d61;
+
+  if (type !== gl.FLOAT && type !== halfFloat) {
+    return;
+  }
+
+  if (isWebGL2(gl)) {
+    gl.getExtension("EXT_color_buffer_float");
+  } else if (type === gl.FLOAT) {
+    gl.getExtension("OES_texture_float");
+    gl.getExtension("WEBGL_color_buffer_float");
+  } else {
+    gl.getExtension("OES_texture_half_float");
+    gl.getExtension("EXT_color_buffer_half_float");
+  }
+}
+
+/**
+ * Enable `EXT_color_buffer_float` when a sized WebGL2 float internal format
+ * (for example `RGBA16F` or `RG32F`) is used for renderbuffer or texture
+ * color storage. No-op for non-float formats.
+ */
+export function enableFloatInternalFormatRendering(
+  gl: WebGL2RenderingContext,
+  internalFormat: number
+): void {
+  switch (internalFormat) {
+    case gl.R16F:
+    case gl.RG16F:
+    case gl.RGBA16F:
+    case gl.R32F:
+    case gl.RG32F:
+    case gl.RGBA32F:
+    case gl.R11F_G11F_B10F:
+      gl.getExtension("EXT_color_buffer_float");
+  }
+}
+
 /** Map a `checkFramebufferStatus` result to a human-readable message. */
 export function getFramebufferStatusMessage(gl: GLContext, status: number): string {
   const statuses = new Map<number, string>([

@@ -46,15 +46,15 @@ gl.bindTexture(gl.TEXTURE_2D, target.texture);
 
 ## Methods
 
-| Method                      | Purpose                                                            |
-| --------------------------- | ------------------------------------------------------------------ |
-| `bind()` / `unbind()`       | Bind this target / bind the default framebuffer                    |
-| `withBound(render)`         | Bind, run `render`, restore the previous framebuffer binding       |
-| `resize({ width, height })` | Reallocate storage; reverts dimensions if the result is incomplete |
-| `resizeToCanvas(canvas)`    | Resize to a canvas backing-store size                              |
-| `readPixels()`              | Read RGBA pixels into a new `Uint8Array`                           |
-| `readPixelsInto(out)`       | Read into a caller-provided array (no per-call allocation)         |
-| `invalidate(attachments?)`  | WebGL2 hint that attachment contents can be discarded              |
-| `dispose()`                 | Delete the framebuffer, texture, and renderbuffer (idempotent)     |
+| Method                      | Purpose                                                        |
+| --------------------------- | -------------------------------------------------------------- |
+| `bind()` / `unbind()`       | Bind this target / bind the default framebuffer                |
+| `withBound(render)`         | Bind, run `render`, restore the previous framebuffer binding   |
+| `resize({ width, height })` | Reallocate storage; restores the previous size on failure      |
+| `resizeToCanvas(canvas)`    | Resize to a canvas backing-store size                          |
+| `readPixels()`              | Read RGBA pixels into a new `Uint8Array`                       |
+| `readPixelsInto(out)`       | Read into a caller-provided array (no per-call allocation)     |
+| `invalidate(attachments?)`  | WebGL2 hint that attachment contents can be discarded          |
+| `dispose()`                 | Delete the framebuffer, texture, and renderbuffer (idempotent) |
 
 `readPixels` currently supports `RGBA` / `UNSIGNED_BYTE` targets. `invalidate` throws on a WebGL1 context.

@@ -44,10 +44,18 @@ export interface Texture2DOptions {
   premultiplyAlpha?: boolean;
 }
 
-/** Options for {@link Texture2D.upload} — a {@link Texture2DOptions} with required dimensions. */
-export interface TextureUploadOptions extends Partial<Texture2DOptions> {
+/**
+ * Options for {@link Texture2D.upload}: the new dimensions plus optional pixel
+ * data. Formats, types, and filters are fixed at construction and cannot be
+ * changed by an upload.
+ */
+export interface TextureUploadOptions {
+  /** New width in pixels (positive integer). */
   width: number;
+  /** New height in pixels (positive integer). */
   height: number;
+  /** Pixel data matching the texture's construction-time format, or `null` for empty storage. */
+  data?: ArrayBufferView | null;
 }
 
 interface TextureConfig {
@@ -196,10 +204,18 @@ export class Texture2D {
    * Upload from an image source (image, canvas, video, `ImageBitmap`,
    * `ImageData`), applying `flipY`/`premultiplyAlpha` and tracking the source's
    * size. Restores the previous texture binding and pixel-store state.
+   *
+   * @throws {RangeError} if the source has a zero dimension (for example an
+   *   image or video that has not finished loading).
    */
   public uploadImage(source: TextureImageSource): void {
     assertNotDisposed("Texture2D", this.isDisposed);
     const gl = this.gl;
+
+    const size = sourceSize(source);
+    if (size.width <= 0 || size.height <= 0) {
+      throw new RangeError("Image source has a zero dimension — it may not have finished loading.");
+    }
 
     saveBindings(
       gl,
@@ -230,7 +246,6 @@ export class Texture2D {
           source
         );
 
-        const size = sourceSize(source);
         this.width = size.width;
         this.height = size.height;
       }
@@ -281,7 +296,18 @@ export class Texture2D {
   }
 
   private withSavedBindings<T>(operation: () => T): T {
-    return saveBindings(this.gl, textureBindingSlots(this.gl), operation);
+    const gl = this.gl;
+
+    return saveBindings(
+      gl,
+      [
+        {
+          binding: gl.TEXTURE_BINDING_2D,
+          restore: (value) => gl.bindTexture(gl.TEXTURE_2D, value as WebGLTexture | null)
+        }
+      ],
+      operation
+    );
   }
 }
 
@@ -317,7 +343,7 @@ export function readTexturePixelsInto(
     throw new WebGLError("Failed to create texture readback framebuffer.");
   }
 
-  return saveBindings(gl, textureBindingSlots(gl), () => {
+  return saveBindings(gl, readbackBindingSlots(gl), () => {
     try {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.framebufferTexture2D(
@@ -353,7 +379,7 @@ function sourceSize(source: TextureImageSource): { width: number; height: number
   return { width: source.width, height: source.height };
 }
 
-function textureBindingSlots(gl: GLContext): BindingSlot[] {
+function readbackBindingSlots(gl: GLContext): BindingSlot[] {
   return [
     {
       binding: gl.TEXTURE_BINDING_2D,

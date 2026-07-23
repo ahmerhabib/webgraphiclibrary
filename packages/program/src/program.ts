@@ -243,6 +243,7 @@ export class Program {
    * program must be in use (see {@link Program.withUsed}).
    */
   public setTexture(name: string, texture: ProgramTexture, unit: number): this {
+    assertNotDisposed("Program", this.isDisposed);
     const gl = this.gl;
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, unwrapTexture(texture));

@@ -1,6 +1,6 @@
 {
   "name": "webgraphiclibrary",
-  "version": "2.0.0-beta.3",
+  "version": "2.0.0",
   "description": "Typed, tree-shakeable WebGL & WebGL2 resource wrappers — framebuffers, shaders, programs, buffers, textures, MRT and multisample — with state-restoration guarantees and zero dependencies.",
   "type": "module",
   "private": false,

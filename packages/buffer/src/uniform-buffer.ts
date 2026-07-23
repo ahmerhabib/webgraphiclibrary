@@ -97,10 +97,15 @@ export class UniformBuffer {
    * Overwrite part of the buffer with `data` at `byteOffset`. Restores the
    * previous `UNIFORM_BUFFER` binding.
    *
-   * @throws {RangeError} if the write would run past the allocated size.
+   * @throws {RangeError} if `byteOffset` is negative or non-integer, or the
+   *   write would run past the allocated size.
    */
   public update(data: BufferSource, byteOffset = 0): void {
     assertNotDisposed("UniformBuffer", this.isDisposed);
+
+    if (!Number.isInteger(byteOffset) || byteOffset < 0) {
+      throw new RangeError("byteOffset must be a non-negative integer.");
+    }
 
     if (byteOffset + data.byteLength > this.byteLength) {
       throw new RangeError(
@@ -121,9 +126,27 @@ export class UniformBuffer {
     this.gl.bindBufferBase(this.gl.UNIFORM_BUFFER, index, this.buffer);
   }
 
-  /** Attach `size` bytes starting at `byteOffset` to binding point `index`. */
+  /**
+   * Attach `size` bytes starting at `byteOffset` to binding point `index`.
+   *
+   * @throws {RangeError} if `byteOffset` is negative or non-integer, `size` is
+   *   not a positive integer, or the range runs past the allocated size.
+   */
   public bindRange(index: number, byteOffset: number, size: number): void {
     assertNotDisposed("UniformBuffer", this.isDisposed);
+
+    if (!Number.isInteger(byteOffset) || byteOffset < 0) {
+      throw new RangeError("byteOffset must be a non-negative integer.");
+    }
+    if (!Number.isInteger(size) || size <= 0) {
+      throw new RangeError("size must be a positive integer.");
+    }
+    if (byteOffset + size > this.byteLength) {
+      throw new RangeError(
+        `Range of ${String(size)} bytes at offset ${String(byteOffset)} exceeds the buffer's ${String(this.byteLength)} bytes.`
+      );
+    }
+
     this.gl.bindBufferRange(this.gl.UNIFORM_BUFFER, index, this.buffer, byteOffset, size);
   }
 

@@ -2,6 +2,47 @@
 
 All notable changes to this package are documented here.
 
+## 2.0.0 — 2026-07-23
+
+First stable release of the v2 API. The API surface is now frozen under semantic
+versioning: breaking changes will only ship in a 3.x release.
+
+### Fixed
+
+- `MultiTarget` and `MultisampleTarget` now enable `EXT_color_buffer_float` when
+  a float or half-float color attachment is requested, matching what
+  `Framebuffer` already did. Previously a float G-buffer or MSAA target was
+  reported incomplete on real browsers.
+- A failed `resize()` on `Framebuffer`, `MultiTarget`, or `MultisampleTarget`
+  now reallocates the GPU storage at the previous dimensions instead of only
+  reverting the reported `width`/`height`, so the wrapper and the underlying
+  storage can no longer disagree after a failure.
+- All framebuffer wrappers now save and restore the WebGL2
+  `READ_FRAMEBUFFER` binding around bind/resize/scoped operations
+  (`bindFramebuffer(FRAMEBUFFER, …)` sets both binding points, so the read
+  binding was previously clobbered).
+- `Program.setTexture` now rejects a disposed program before touching the
+  active texture unit, matching every other method.
+- `Texture2D.uploadImage` now throws a `RangeError` for sources with a zero
+  dimension (for example an image or video that has not finished loading)
+  instead of silently recording a `0×0` size.
+- `UniformBuffer.update` and `UniformBuffer.bindRange` now validate offsets and
+  sizes and throw a typed `RangeError` for negative, fractional, or
+  out-of-bounds values instead of passing them through to the driver.
+
+### Changed
+
+- `GLBuffer` now validates its `target` at construction and supports binding
+  restoration for all WebGL2 buffer targets (copy, pixel, transform-feedback,
+  and uniform), not just `ARRAY_BUFFER`/`ELEMENT_ARRAY_BUFFER`. Unknown targets
+  throw a `WebGLError` instead of silently clobbering bindings.
+- `TextureUploadOptions` is narrowed to `{ width, height, data? }` — the only
+  fields `upload()` ever honored. Formats, types, and filters are fixed at
+  construction, and the type no longer suggests otherwise.
+- Ordinary `Texture2D` operations (construction, `upload`, `generateMipmap`)
+  no longer query and restore the framebuffer binding they never touched,
+  removing a needless driver sync from hot paths.
+
 ## 2.0.0-beta.3 — 2026-07-22
 
 ### Added

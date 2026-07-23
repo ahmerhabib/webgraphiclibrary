@@ -8,6 +8,7 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
   const buffer = { type: "buffer" };
   let arrayBufferBinding: unknown = null;
   let elementArrayBufferBinding: unknown = null;
+  let uniformBufferBinding: unknown = null;
 
   const gl = {
     calls,
@@ -15,6 +16,8 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
     ELEMENT_ARRAY_BUFFER: 0x8893,
     ARRAY_BUFFER_BINDING: 0x8894,
     ELEMENT_ARRAY_BUFFER_BINDING: 0x8895,
+    UNIFORM_BUFFER: 0x8a11,
+    UNIFORM_BUFFER_BINDING: 0x8a28,
     STATIC_DRAW: 0x88e4,
     createFramebuffer: () => ({}),
     bindFramebuffer: () => undefined,
@@ -27,6 +30,10 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
 
       if (target === gl.ELEMENT_ARRAY_BUFFER) {
         elementArrayBufferBinding = value;
+      }
+
+      if (target === gl.UNIFORM_BUFFER) {
+        uniformBufferBinding = value;
       }
 
       calls.push(["bindBuffer", target, value]);
@@ -42,11 +49,19 @@ function createMockGL(overrides: Record<string, unknown> = {}) {
         return elementArrayBufferBinding;
       }
 
+      if (parameter === gl.UNIFORM_BUFFER_BINDING) {
+        return uniformBufferBinding;
+      }
+
       return null;
     },
     deleteBuffer: (...args: unknown[]) => calls.push(["deleteBuffer", ...args]),
     ...overrides
-  } as unknown as WebGLRenderingContext & { calls: Call[] };
+  } as unknown as WebGLRenderingContext & {
+    calls: Call[];
+    UNIFORM_BUFFER: number;
+    UNIFORM_BUFFER_BINDING: number;
+  };
 
   return gl;
 }
@@ -178,6 +193,25 @@ describe("GLBuffer", () => {
       () => new GLBuffer(gl, { target: gl.ARRAY_BUFFER, data: new Float32Array([1]) })
     ).toThrow("upload failed");
     expect(gl.calls.filter(([name]) => name === "deleteBuffer")).toHaveLength(1);
+  });
+
+  it("rejects a buffer target the context does not support", () => {
+    const gl = createMockGL();
+    expect(() => new GLBuffer(gl, { target: gl.UNIFORM_BUFFER })).toThrow(
+      "Unsupported buffer target"
+    );
+    expect(() => new GLBuffer(gl, { target: 0x1234 })).toThrow("Unsupported buffer target");
+  });
+
+  it("restores the previous binding for WebGL2 buffer targets", () => {
+    const gl = createMockGL({ texStorage2D: () => undefined });
+    const previous = { type: "previous-uniform-buffer" };
+    gl.bindBuffer(gl.UNIFORM_BUFFER, previous);
+
+    const buffer = new GLBuffer(gl, { target: gl.UNIFORM_BUFFER, data: new Float32Array(4) });
+    buffer.upload(new Float32Array(8));
+
+    expect(gl.getParameter(gl.UNIFORM_BUFFER_BINDING)).toBe(previous);
   });
 
   it("disposes once and rejects upload after disposal", () => {
