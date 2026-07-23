@@ -5,9 +5,9 @@ webgraphiclibrary is a set of typed wrappers around individual WebGL resources. 
 ## Install
 
 ```bash
-npm install webgraphiclibrary@beta
+npm install webgraphiclibrary
 # or
-pnpm add webgraphiclibrary@beta
+pnpm add webgraphiclibrary
 ```
 
 The package is ESM only and has no runtime dependencies. You provide the `WebGLRenderingContext` or `WebGL2RenderingContext`.
