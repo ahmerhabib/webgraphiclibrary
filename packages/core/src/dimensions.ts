@@ -5,7 +5,10 @@
  * @throws {TypeError} if `value` is not an integer.
  * @throws {RangeError} if `value` is less than or equal to 0.
  */
-export function assertPositiveIntegerDimension(name: "width" | "height", value: number): number {
+export function assertPositiveIntegerDimension(
+  name: "width" | "height" | "size",
+  value: number
+): number {
   if (!Number.isInteger(value)) {
     throw new TypeError(`${name} must be an integer.`);
   }

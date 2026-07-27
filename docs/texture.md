@@ -50,3 +50,42 @@ texture.generateMipmap();
 | `readTexturePixelsInto(gl, texture, out)` | Read into a caller-provided array        |
 
 Both attach the texture to a temporary framebuffer, read `RGBA` / `UNSIGNED_BYTE`, and restore bindings.
+
+# CubemapTexture
+
+A cube texture (`TEXTURE_CUBE_MAP`) for skyboxes, environment maps, and reflections. Six square faces are allocated together in `+X, -X, +Y, -Y, +Z, -Z` order (face `i` maps to `gl.TEXTURE_CUBE_MAP_POSITIVE_X + i`); sample it in GLSL with `samplerCube`.
+
+```ts
+import { CubemapTexture } from "webgraphiclibrary/texture";
+
+const sky = new CubemapTexture(gl, {
+  size: 512,
+  faces: [posX, negX, posY, negY, posZ, negZ] // six loaded images
+});
+sky.generateMipmap();
+```
+
+## Constructor options
+
+| Option                             | Type                           | Default                           | Notes                                                |
+| ---------------------------------- | ------------------------------ | --------------------------------- | ---------------------------------------------------- |
+| `size`                             | `number`                       | required                          | Edge length of each square face (positive integer)   |
+| `internalFormat`, `format`, `type` | `number`                       | `RGBA` / `RGBA` / `UNSIGNED_BYTE` | Storage formats                                      |
+| `minFilter`, `magFilter`           | `number`                       | `LINEAR`                          | Sampler filters                                      |
+| `wrapS`, `wrapT`                   | `number`                       | `CLAMP_TO_EDGE`                   | Wrap modes                                           |
+| `data`                             | `(ArrayBufferView \| null)[6]` | six empty faces                   | Per-face pixel data                                  |
+| `faces`                            | `TextureImageSource[6]`        | —                                 | Per-face image sources, all matching `size`          |
+| `flipY`, `premultiplyAlpha`        | `boolean`                      | `false`                           | Pixel-store state for image uploads (restored after) |
+
+## Methods
+
+| Method                       | Purpose                                                  |
+| ---------------------------- | -------------------------------------------------------- |
+| `bind()` / `unbind()`        | Bind / unbind on `TEXTURE_CUBE_MAP`                      |
+| `withBound(render)`          | Bind, run `render`, restore the previous cubemap binding |
+| `uploadFace(face, source)`   | Upload one face from an image source (must match `size`) |
+| `uploadFaceData(face, data)` | Reallocate one face from typed-array data (or `null`)    |
+| `generateMipmap()`           | Generate a mipmap chain for all faces                    |
+| `dispose()`                  | Delete the texture (idempotent)                          |
+
+Invalid face indices, wrong-sized sources, and zero-sized (not-yet-loaded) images throw `RangeError` before any GL state is touched. See the [skybox example](../examples/skybox) for a complete render.

@@ -2,6 +2,23 @@
 
 All notable changes to this package are documented here.
 
+## 2.1.0 — 2026-07-27
+
+### Added
+
+- `CubemapTexture` exported from `webgraphiclibrary/texture`: a six-face
+  `TEXTURE_CUBE_MAP` wrapper for skyboxes, environment maps, and reflections,
+  with per-face image (`uploadFace`) and typed-array (`uploadFaceData`)
+  uploads, mipmap generation, and the same state-restoration and typed-error
+  guarantees as `Texture2D`. Face sources are validated against the cubemap
+  size before any GL state is touched.
+- A [skybox example](examples/skybox) rendering six procedurally generated
+  faces through a `CubemapTexture`, with a captured screenshot and browser
+  self-test coverage.
+- A [live demo gallery](https://ahmerhabib.github.io/webgraphiclibrary/)
+  deployed to GitHub Pages on every push to `main` — each example runs in the
+  browser against the real built library.
+
 ## 2.0.0 — 2026-07-23
 
 First stable release of the v2 API. The API surface is now frozen under semantic

@@ -21,7 +21,8 @@ const EXAMPLES = [
   "examples/postprocessing/index.html",
   "examples/gbuffer/index.html",
   "examples/antialiasing/index.html",
-  "examples/instancing/index.html"
+  "examples/instancing/index.html",
+  "examples/skybox/index.html"
 ];
 
 if (!existsSync(join(root, "dist"))) {

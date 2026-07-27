@@ -45,6 +45,13 @@ parameters stream through a `std140` `UniformBuffer`.
 
 ![Instanced flow field](../docs/screenshots/instancing-demo.png)
 
+### [skybox](./skybox) — `CubemapTexture` skybox
+
+Six procedurally generated faces uploaded through a `CubemapTexture` and
+sampled per-pixel along the view ray with `samplerCube`.
+
+![Procedural skybox](../docs/screenshots/skybox-demo.png)
+
 ### [picking](./picking) — color-id picking with `readPixelsInto`
 
 Object ids rendered into an off-screen target; one-pixel readback identifies

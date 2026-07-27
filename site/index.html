@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>webgraphiclibrary — live WebGL demos</title>
+    <meta
+      name="description"
+      content="Live, in-browser demos of webgraphiclibrary: typed WebGL and WebGL2 resource wrappers with state-restoration guarantees and zero dependencies."
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #0b1017;
+        color: #9db2c9;
+        min-height: 100vh;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+      h1 {
+        color: #eaf2ff;
+        font-size: 34px;
+        margin: 0 0 10px;
+        letter-spacing: -0.02em;
+      }
+      .lede {
+        font-size: 17px;
+        line-height: 1.6;
+        max-width: 760px;
+        margin: 0 0 18px;
+      }
+      .lede strong {
+        color: #eaf2ff;
+      }
+      .links {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 0 0 40px;
+      }
+      .links a {
+        color: #7fd4c1;
+        background: rgba(42, 143, 122, 0.16);
+        border: 1px solid rgba(42, 143, 122, 0.4);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 999px;
+      }
+      .links a:hover {
+        background: rgba(42, 143, 122, 0.3);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 22px;
+      }
+      .card {
+        display: block;
+        text-decoration: none;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0d1520;
+        border: 1px solid #1e2b3a;
+        transition: border-color 0.15s ease;
+      }
+      .card:hover {
+        border-color: #2a8f7a;
+      }
+      .card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 1360 / 700;
+        object-fit: cover;
+        border-bottom: 1px solid #1e2b3a;
+      }
+      .card .meta {
+        padding: 14px 16px 16px;
+      }
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 16px;
+        color: #eaf2ff;
+      }
+      .card p {
+        margin: 0;
+        font-size: 13.5px;
+        line-height: 1.5;
+        color: #9db2c9;
+      }
+      .card code {
+        color: #7fd4c1;
+        font-size: 12.5px;
+      }
+      footer {
+        margin-top: 48px;
+        font-size: 13.5px;
+        color: #6b7f95;
+      }
+      footer a {
+        color: #9db2c9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>webgraphiclibrary — live demos</h1>
+      <p class="lede">
+        <strong
+          >Typed WebGL &amp; WebGL2 resource wrappers for people who write their own render
+          loop.</strong
+        >
+        Every demo below runs live in your browser against the real built library — no bundler, no
+        framework. View source on any page to see exactly how it is made.
+      </p>
+      <div class="links">
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        <a href="https://www.npmjs.com/package/webgraphiclibrary">npm</a>
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary#readme">Documentation</a>
+      </div>
+
+      <div class="grid">
+        <a class="card" href="examples/postprocessing/">
+          <img src="docs/screenshots/postprocessing-demo.png" alt="Bloom post-processing demo" />
+          <div class="meta">
+            <h2>Bloom post-processing</h2>
+            <p>Bright-pass → blur → composite across five <code>Framebuffer</code>s.</p>
+          </div>
+        </a>
+        <a class="card" href="examples/gbuffer/">
+          <img src="docs/screenshots/gbuffer-demo.png" alt="Deferred shading G-buffer demo" />
+          <div class="meta">
+            <h2>Deferred G-buffer (MRT)</h2>
+            <p>One geometry pass fills three attachments via <code>MultiTarget</code>.</p>
+          </div>
+        </a>
+        <a class="card" href="examples/antialiasing/">
+          <img src="docs/screenshots/antialiasing-demo.png" alt="MSAA comparison demo" />
+          <div class="meta">
+            <h2>4× MSAA</h2>
+            <p>Aliased vs. multisampled, resolved with <code>MultisampleTarget</code>.</p>
+          </div>
+        </a>
+        <a class="card" href="examples/instancing/">
+          <img src="docs/screenshots/instancing-demo.png" alt="Instancing demo" />
+          <div class="meta">
+            <h2>Instancing</h2>
+            <p>
+              1,440 instances in one draw call: <code>VertexArray</code> +
+              <code>UniformBuffer</code>.
+            </p>
+          </div>
+        </a>
+        <a class="card" href="examples/skybox/">
+          <img src="docs/screenshots/skybox-demo.png" alt="Skybox demo" />
+          <div class="meta">
+            <h2>Skybox</h2>
+            <p>Six procedural faces through a <code>CubemapTexture</code>, sampled per-pixel.</p>
+          </div>
+        </a>
+        <a class="card" href="examples/picking/">
+          <img src="docs/screenshots/picking-demo.png" alt="Color-id picking demo" />
+          <div class="meta">
+            <h2>GPU picking</h2>
+            <p>Color-id readback with zero per-frame allocation via <code>readPixelsInto</code>.</p>
+          </div>
+        </a>
+        <a class="card" href="examples/minimal-triangle/">
+          <img src="docs/screenshots/minimal-triangle-demo.png" alt="Minimal triangle demo" />
+          <div class="meta">
+            <h2>Minimal triangle</h2>
+            <p><code>Shader</code> + <code>Program</code> + <code>GLBuffer</code>, nothing else.</p>
+          </div>
+        </a>
+      </div>
+
+      <footer>
+        MIT licensed ·
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/LICENSE.md"
+          >ahmerhabib</a
+        >
+        · zero runtime dependencies · every screenshot above is this code's real output
+      </footer>
+    </div>
+  </body>
+</html>
