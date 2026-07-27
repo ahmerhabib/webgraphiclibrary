@@ -2,6 +2,23 @@
 
 All notable changes to this package are documented here.
 
+## 2.1.1 — 2026-07-27
+
+### Security
+
+- GitHub releases now ship the npm tarball with a Sigstore build-provenance
+  attestation attached, generated in CI at publish time.
+- Resolved two dev-dependency advisories (`postcss`, `brace-expansion`) via
+  version overrides; `pnpm audit` is clean across all dependency groups.
+
+### Added
+
+- Property-based fuzz tests (fast-check) for the dimension validator and the
+  `UniformBuffer` bounds checks — several hundred randomized cases per run
+  proving no out-of-bounds write or range can ever reach the driver.
+- Interactive demo pages for every example, and a redesigned
+  [live demo site](https://ahmerhabib.github.io/webgraphiclibrary/).
+
 ## 2.1.0 — 2026-07-27
 
 ### Added
