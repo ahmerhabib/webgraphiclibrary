@@ -3,126 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — MRT G-buffer</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      body {
-        margin: 0;
-        background: #0b1017;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        width: 1280px;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-      }
-      .frame {
-        position: relative;
-        line-height: 0;
-      }
-      canvas {
-        display: block;
-        width: 1280px;
-        height: 720px;
-      }
-      .grid-v,
-      .grid-h {
-        position: absolute;
-        background: rgba(255, 255, 255, 0.28);
-      }
-      .grid-v {
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-      }
-      .grid-h {
-        left: 0;
-        right: 0;
-        top: 50%;
-        height: 1px;
-      }
-      .tag {
-        position: absolute;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        background: rgba(9, 14, 20, 0.72);
-        color: #eaf2ff;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-      .tl {
-        top: 16px;
-        left: 16px;
-      }
-      .tr {
-        top: 16px;
-        right: 16px;
-      }
-      .bl {
-        bottom: 16px;
-        left: 16px;
-      }
-      .br {
-        bottom: 16px;
-        right: 16px;
-      }
-      .caption {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        font-size: 14px;
-        color: #9db2c9;
-        border-top: 1px solid #1e2b3a;
-      }
-      .caption strong {
-        color: #eaf2ff;
-        font-weight: 650;
-      }
-      .pill {
-        font-size: 12.5px;
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        padding: 4px 10px;
-        border-radius: 999px;
-      }
-    </style>
+    <title>Deferred G-buffer — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
   </head>
   <body>
-    <div class="card">
-      <div class="frame">
-        <canvas id="scene" width="1280" height="720"></canvas>
-        <div class="grid-v"></div>
-        <div class="grid-h"></div>
-        <span class="tag tl">Albedo</span>
-        <span class="tag tr">Normals</span>
-        <span class="tag bl">Depth</span>
-        <span class="tag br">Deferred lighting</span>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/gbuffer/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>Deferred shading with a G-buffer</h1>
+        <p>
+          One geometry pass writes albedo, normals, and depth into a three-attachment
+          <code>MultiTarget</code>; a lighting pass reads them back.
+          <strong>Move your pointer over the canvas to steer the light.</strong>
+        </p>
       </div>
-      <div class="caption">
-        <span
-          ><strong>Multiple render targets</strong> — one pass writes albedo, normals & depth; a
-          lighting pass reads them back</span
-        >
-        <span class="pill">MultiTarget · 3 attachments · drawBuffers</span>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="720"></canvas>
+          <span class="tag">1 geometry pass &rarr; 3 attachments</span>
+        </div>
+        <div class="caption">
+          <span
+            ><strong>Top:</strong> albedo &middot; normals &nbsp;<strong>Bottom:</strong> depth
+            &middot; deferred lighting</span
+          >
+          <span class="chip">MultiTarget &middot; drawBuffers</span>
+        </div>
       </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="intensity">Light intensity</label>
+          <input id="intensity" type="range" min="0.2" max="2.5" step="0.05" value="1" />
+          <output>1.00</output>
+        </div>
+        <div class="control">
+          <label for="rim">Rim light</label>
+          <input id="rim" type="range" min="0" max="1" step="0.01" value="0.25" />
+          <output>0.25</output>
+        </div>
+        <div class="control">
+          <button id="animate" class="toggle" aria-pressed="true">Animate</button>
+        </div>
+      </div>
+
+      <p class="note">
+        Deferred shading rasterizes geometry once and lights per screen pixel, which is why
+        G-buffers power most modern engine pipelines. API reference:
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/advanced-targets.md"
+          >MultiTarget</a
+        >.
+      </p>
     </div>
 
     <script type="module">
@@ -130,9 +72,10 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { MultiTarget } from "../../dist/fbo.js";
+      import { bindRange, bindToggle, startLoop } from "../assets/demo-shell.js";
 
       const canvas = document.querySelector("#scene");
-      const gl = canvas.getContext("webgl2");
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
       if (gl === null) throw new Error("WebGL2 is not available.");
 
       const W = 640;
@@ -153,18 +96,18 @@
         `#version 300 es
         precision highp float;
         in vec2 uv;
+        uniform vec2 centers[3];
         layout(location = 0) out vec4 outAlbedo;
         layout(location = 1) out vec4 outNormal;
         layout(location = 2) out vec4 outDepth;
 
         void main() {
-          vec2 centers[3];
           float radii[3];
           float depths[3];
           vec3 colors[3];
-          centers[0] = vec2(0.37, 0.5); radii[0] = 0.30; depths[0] = 0.42; colors[0] = vec3(0.96, 0.4, 0.38);
-          centers[1] = vec2(0.6, 0.44); radii[1] = 0.22; depths[1] = 0.28; colors[1] = vec3(0.38, 0.72, 0.98);
-          centers[2] = vec2(0.7, 0.66); radii[2] = 0.17; depths[2] = 0.16; colors[2] = vec3(0.6, 0.9, 0.55);
+          radii[0] = 0.30; depths[0] = 0.42; colors[0] = vec3(0.96, 0.4, 0.38);
+          radii[1] = 0.22; depths[1] = 0.28; colors[1] = vec3(0.38, 0.72, 0.98);
+          radii[2] = 0.17; depths[2] = 0.16; colors[2] = vec3(0.6, 0.9, 0.55);
 
           vec3 albedo = vec3(0.05, 0.06, 0.09);
           vec3 normal = vec3(0.0, 0.0, 1.0);
@@ -207,41 +150,84 @@
         out vec4 frag;
         uniform sampler2D albedoTex;
         uniform sampler2D normalTex;
+        uniform vec3 lightDir;
+        uniform float intensity;
+        uniform float rimAmount;
         void main() {
           vec3 albedo = texture(albedoTex, uv).rgb;
           vec3 n = normalize(texture(normalTex, uv).rgb * 2.0 - 1.0);
-          vec3 L = normalize(vec3(0.35, 0.45, 0.82));
-          float diff = max(dot(n, L), 0.0);
-          float rim = pow(1.0 - max(n.z, 0.0), 2.0) * 0.25;
+          vec3 L = normalize(lightDir);
+          float diff = max(dot(n, L), 0.0) * intensity;
+          float rim = pow(1.0 - max(n.z, 0.0), 2.0) * rimAmount;
           frag = vec4(albedo * (0.16 + diff) + rim, 1.0);
         }`
       );
 
       const gbuffer = new MultiTarget(gl, { width: W, height: H, attachments: 3 });
 
-      // One geometry pass writes all three attachments at once.
-      gbuffer.withBound(() => {
-        gl.viewport(0, 0, W, H);
-        draw(geometryProgram);
+      let intensity = 1;
+      let rim = 0.25;
+      let animate = true;
+      let frozen = 0;
+      const light = { x: 0.35, y: 0.45 };
+
+      bindRange(
+        "intensity",
+        (v) => (intensity = v),
+        (v) => v.toFixed(2)
+      );
+      bindRange(
+        "rim",
+        (v) => (rim = v),
+        (v) => v.toFixed(2)
+      );
+      bindToggle("animate", (on) => (animate = on));
+
+      canvas.addEventListener("pointermove", (event) => {
+        const rect = canvas.getBoundingClientRect();
+        light.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        light.y = -(((event.clientY - rect.top) / rect.height) * 2 - 1);
       });
 
-      // Show each attachment in a quadrant; deferred lighting reads them back.
-      gl.viewport(0, H, W, H); // top-left: albedo
-      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[0], 0));
+      const centers = new Float32Array(6);
 
-      gl.viewport(W, H, W, H); // top-right: normals
-      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[1], 0));
+      startLoop((elapsed) => {
+        if (animate) frozen = elapsed;
+        const t = frozen * 0.5;
+        centers.set([
+          0.37 + 0.05 * Math.sin(t),
+          0.5 + 0.04 * Math.cos(t * 1.3),
+          0.6 + 0.05 * Math.cos(t * 0.9),
+          0.44 + 0.05 * Math.sin(t * 1.1),
+          0.7 + 0.04 * Math.sin(t * 1.4 + 1.0),
+          0.66 + 0.05 * Math.cos(t * 0.7)
+        ]);
 
-      gl.viewport(0, 0, W, H); // bottom-left: depth
-      draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[2], 0));
+        // One geometry pass writes all three attachments at once.
+        gbuffer.withBound(() => {
+          gl.viewport(0, 0, W, H);
+          draw(geometryProgram, (p) => p.setUniform2fv("centers[0]", centers));
+        });
 
-      gl.viewport(W, 0, W, H); // bottom-right: deferred lighting
-      draw(lightingProgram, (p) => {
-        p.setTexture("albedoTex", gbuffer.textures[0], 0);
-        p.setTexture("normalTex", gbuffer.textures[1], 1);
+        // Show each attachment in a quadrant; deferred lighting reads them back.
+        gl.viewport(0, H, W, H); // top-left: albedo
+        draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[0], 0));
+
+        gl.viewport(W, H, W, H); // top-right: normals
+        draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[1], 0));
+
+        gl.viewport(0, 0, W, H); // bottom-left: depth
+        draw(showProgram, (p) => p.setTexture("tex", gbuffer.textures[2], 0));
+
+        gl.viewport(W, 0, W, H); // bottom-right: deferred lighting
+        draw(lightingProgram, (p) => {
+          p.setTexture("albedoTex", gbuffer.textures[0], 0);
+          p.setTexture("normalTex", gbuffer.textures[1], 1);
+          p.setUniform3f("lightDir", light.x, light.y, 0.82);
+          p.setUniform1f("intensity", intensity);
+          p.setUniform1f("rimAmount", rim);
+        });
       });
-
-      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
 
       function draw(prog, configure) {
         prog.withUsed(() => {
@@ -252,10 +238,12 @@
       }
 
       function program(vertexSource, fragmentSource) {
-        return new Program(gl, {
-          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
-          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
-        });
+        const vertexShader = new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource });
+        const fragmentShader = new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource });
+        const built = new Program(gl, { vertexShader, fragmentShader });
+        vertexShader.dispose();
+        fragmentShader.dispose();
+        return built;
       }
     </script>
   </body>

@@ -3,105 +3,72 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — multisample resolve</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      body {
-        margin: 0;
-        background: #0b1017;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        width: 1280px;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-      }
-      .frame {
-        position: relative;
-        line-height: 0;
-      }
-      canvas {
-        display: block;
-        width: 1280px;
-        height: 512px;
-      }
-      .divider {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-        background: rgba(255, 255, 255, 0.35);
-      }
-      .tag {
-        position: absolute;
-        top: 16px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        background: rgba(9, 14, 20, 0.72);
-        color: #eaf2ff;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-      .tag.left {
-        left: 16px;
-      }
-      .tag.right {
-        right: 16px;
-      }
-      .caption {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        font-size: 14px;
-        color: #9db2c9;
-        border-top: 1px solid #1e2b3a;
-      }
-      .caption strong {
-        color: #eaf2ff;
-        font-weight: 650;
-      }
-      .pill {
-        font-size: 12.5px;
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        padding: 4px 10px;
-        border-radius: 999px;
-      }
-    </style>
+    <title>MSAA comparison — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
   </head>
   <body>
-    <div class="card">
-      <div class="frame">
-        <canvas id="scene" width="1280" height="512"></canvas>
-        <div class="divider"></div>
-        <span class="tag left">No MSAA — aliased edges</span>
-        <span class="tag right">4× MSAA — resolve()</span>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/antialiasing/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>Multisample anti-aliasing</h1>
+        <p>
+          The same low-resolution pinwheel rendered twice: into a plain
+          <code>Framebuffer</code> and into a <code>MultisampleTarget</code> that is resolved to a
+          texture. Both are magnified so you can see individual pixels. Switching the sample count
+          disposes and recreates the multisampled target live.
+        </p>
       </div>
-      <div class="caption">
-        <span
-          ><strong>Multisampling</strong> — render into a multisampled buffer, then
-          <code>resolve()</code> blits it to a sampleable texture</span
-        >
-        <span class="pill">MultisampleTarget · samples: 4 · blit</span>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="512"></canvas>
+          <span class="tag" id="tag">1&times; vs 4&times; MSAA</span>
+        </div>
+        <div class="caption">
+          <span
+            ><strong>Left:</strong> no multisampling &middot; <strong>Right:</strong> MSAA +
+            <code>resolve()</code></span
+          >
+          <span class="chip">MultisampleTarget</span>
+        </div>
       </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="samples">Samples</label>
+          <select id="samples">
+            <option value="2">2&times;</option>
+            <option value="4" selected>4&times;</option>
+            <option value="max">MAX_SAMPLES</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="speed">Rotation</label>
+          <input id="speed" type="range" min="0" max="1" step="0.02" value="0.12" />
+          <output>0.12</output>
+        </div>
+        <div class="control">
+          <button id="animate" class="toggle" aria-pressed="true">Animate</button>
+        </div>
+      </div>
+
+      <p class="note">
+        Slow rotation is the classic aliasing stress test — watch the stair-stepped edges crawl on
+        the left while the resolved side stays smooth. API reference:
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/advanced-targets.md"
+          >MultisampleTarget</a
+        >.
+      </p>
     </div>
 
     <script type="module">
@@ -109,9 +76,10 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { Framebuffer, MultisampleTarget } from "../../dist/fbo.js";
+      import { bindRange, bindSelect, bindToggle, startLoop } from "../assets/demo-shell.js";
 
       const canvas = document.querySelector("#scene");
-      const gl = canvas.getContext("webgl2");
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
       if (gl === null) throw new Error("WebGL2 is not available.");
 
       const HALF = 640;
@@ -142,7 +110,12 @@
         `#version 300 es
           in vec2 position;
           uniform float aspect;
-          void main() { gl_Position = vec4(position.x / aspect, position.y, 0.0, 1.0); }`,
+          uniform float angle;
+          void main() {
+            mat2 r = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+            vec2 p = r * position;
+            gl_Position = vec4(p.x / aspect, p.y, 0.0, 1.0);
+          }`,
         `#version 300 es
           precision highp float;
           out vec4 frag;
@@ -169,34 +142,61 @@
         minFilter: gl.NEAREST,
         magFilter: gl.NEAREST
       });
-      const msaa = new MultisampleTarget(gl, {
-        width: LOW_W,
-        height: LOW_H,
-        samples: 4,
-        minFilter: gl.NEAREST,
-        magFilter: gl.NEAREST
-      });
 
-      // Render the same shape with and without multisampling.
-      plain.withBound(() => {
-        gl.viewport(0, 0, LOW_W, LOW_H);
-        clear();
-        drawShape();
-      });
-      msaa.withBound(() => {
-        gl.viewport(0, 0, LOW_W, LOW_H);
-        clear();
-        drawShape();
-      });
-      msaa.resolve();
+      const maxSamples = gl.getParameter(gl.MAX_SAMPLES);
+      const tag = document.getElementById("tag");
+      let msaa = null;
 
-      // Display each, magnified, side by side.
-      gl.viewport(0, 0, HALF, H);
-      blit(plain.texture);
-      gl.viewport(HALF, 0, HALF, H);
-      blit(msaa.texture);
+      function rebuildTarget(requested) {
+        if (msaa !== null) msaa.dispose();
+        const samples = requested === "max" ? maxSamples : Number(requested);
+        msaa = new MultisampleTarget(gl, {
+          width: LOW_W,
+          height: LOW_H,
+          samples,
+          minFilter: gl.NEAREST,
+          magFilter: gl.NEAREST
+        });
+        tag.innerHTML = `1&times; vs ${msaa.samples}&times; MSAA`;
+      }
 
-      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+      let speed = 0.12;
+      let animate = true;
+      let angle = 0.35;
+      let last = 0;
+
+      bindSelect("samples", rebuildTarget);
+      bindRange(
+        "speed",
+        (v) => (speed = v),
+        (v) => v.toFixed(2)
+      );
+      bindToggle("animate", (on) => (animate = on));
+
+      startLoop((elapsed) => {
+        const dt = elapsed - last;
+        last = elapsed;
+        if (animate) angle += dt * speed;
+
+        // Render the same shape with and without multisampling.
+        plain.withBound(() => {
+          gl.viewport(0, 0, LOW_W, LOW_H);
+          clear();
+          drawShape();
+        });
+        msaa.withBound(() => {
+          gl.viewport(0, 0, LOW_W, LOW_H);
+          clear();
+          drawShape();
+        });
+        msaa.resolve();
+
+        // Display each, magnified, side by side.
+        gl.viewport(0, 0, HALF, H);
+        blit(plain.texture);
+        gl.viewport(HALF, 0, HALF, H);
+        blit(msaa.texture);
+      });
 
       function clear() {
         gl.clearColor(0.05, 0.06, 0.09, 1);
@@ -205,6 +205,7 @@
       function drawShape() {
         shapeProgram.withUsed(() => {
           shapeProgram.setUniform1f("aspect", aspect);
+          shapeProgram.setUniform1f("angle", angle);
           shapeProgram.enableAttribute("position", { buffer: pinwheel, size: 2 });
           gl.drawArrays(gl.TRIANGLES, 0, blades * 3);
         });
@@ -217,10 +218,12 @@
         });
       }
       function program(vertexSource, fragmentSource) {
-        return new Program(gl, {
-          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
-          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
-        });
+        const vertexShader = new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource });
+        const fragmentShader = new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource });
+        const built = new Program(gl, { vertexShader, fragmentShader });
+        vertexShader.dispose();
+        fragmentShader.dispose();
+        return built;
       }
     </script>
   </body>

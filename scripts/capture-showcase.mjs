@@ -77,6 +77,14 @@ try {
       .locator(shot.sel ?? ".card")
       .first()
       .screenshot({ path: join(outputDir, `${shot.name}-demo.png`) });
+
+    // Canvas-only capture used as the demo-site thumbnail.
+    if (shot.name !== "architecture") {
+      await page
+        .locator("canvas")
+        .first()
+        .screenshot({ path: join(outputDir, `${shot.name}-thumb.png`) });
+    }
     await page.close();
     console.log(`OK captured ${shot.name}-demo.png`);
   }
