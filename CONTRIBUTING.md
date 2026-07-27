@@ -13,6 +13,13 @@ pnpm verify
 
 For the full local testing workflow — mock-GL unit tests vs. real-browser tests, coverage, running a subset, and how to add tests — see [docs/testing.md](docs/testing.md).
 
+## Testing policy
+
+Every change that adds or alters functionality must include tests covering the
+new behavior, and the full test suite must pass before a pull request is
+merged (CI enforces this on the protected `main` branch). Bug fixes should add
+a regression test that fails without the fix.
+
 ## Development standards
 
 - Keep APIs focused on one WebGL resource or workflow.
