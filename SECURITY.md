@@ -12,6 +12,11 @@ reproduction and the affected package version.
 If private reporting is unavailable, open a GitHub issue that describes the
 impact without publishing a working exploit, and we will coordinate a fix.
 
+We aim to acknowledge vulnerability reports within 72 hours and to provide an
+initial assessment — and, for confirmed issues, a fix or mitigation — within
+14 days. Reporters are credited in the release notes unless they prefer
+otherwise.
+
 ## Supply chain and hardening
 
 - **Zero runtime dependencies** — no third-party code ships to consumers, and
