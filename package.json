@@ -1,6 +1,6 @@
 {
   "name": "webgraphiclibrary",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Typed, tree-shakeable WebGL & WebGL2 resource wrappers — framebuffers, shaders, programs, buffers, textures, MRT and multisample — with state-restoration guarantees and zero dependencies.",
   "type": "module",
   "private": false,
@@ -81,6 +81,7 @@
     "@types/node": "^26.1.1",
     "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^10.7.0",
+    "fast-check": "^4.9.0",
     "playwright": "^1.61.1",
     "prettier": "^3.7.4",
     "rimraf": "^6.1.2",
@@ -91,7 +92,10 @@
   },
   "pnpm": {
     "overrides": {
-      "esbuild": "^0.28.1"
+      "esbuild": "^0.28.1",
+      "postcss": ">=8.5.18",
+      "minimatch": "^10.2.5",
+      "brace-expansion": "^5.0.8"
     }
   },
   "packageManager": "pnpm@10.33.0",
