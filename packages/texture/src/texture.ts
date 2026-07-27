@@ -367,7 +367,8 @@ export function readTexturePixelsInto(
   });
 }
 
-function sourceSize(source: TextureImageSource): { width: number; height: number } {
+/** @internal Shared with the cubemap wrapper; not part of the public API. */
+export function sourceSize(source: TextureImageSource): { width: number; height: number } {
   if ("videoWidth" in source) {
     return { width: source.videoWidth, height: source.videoHeight };
   }

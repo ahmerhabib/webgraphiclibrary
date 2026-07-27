@@ -36,6 +36,7 @@ WebGPU's model is explicit resources, recorded state, and no hidden globals — 
 | `GLBuffer`                           | `GPUBuffer` (vertex/index usage)                  |
 | `VertexArray` (recorded layout)      | `GPUVertexState` buffer layouts on the pipeline   |
 | `UniformBuffer` + `connect`/`bindTo` | `GPUBuffer` (uniform usage) in a `GPUBindGroup`   |
+| `CubemapTexture`                     | `GPUTexture` with a `cube` view dimension         |
 | `Framebuffer` / `MultiTarget`        | `GPURenderPassDescriptor` color/depth attachments |
 | `MultisampleTarget` + `resolve()`    | Multisampled attachment + `resolveTarget`         |
 | `withBound` / `withUsed` scopes      | Encoder scope of a `GPURenderPassEncoder`         |

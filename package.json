@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/ahmerhabib/webgraphiclibrary/issues"
   },
-  "homepage": "https://github.com/ahmerhabib/webgraphiclibrary#readme",
+  "homepage": "https://ahmerhabib.github.io/webgraphiclibrary/",
   "engines": {
     "node": ">=22.14.0"
   },

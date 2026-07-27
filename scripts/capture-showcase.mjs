@@ -20,6 +20,7 @@ const SHOTS = [
   { name: "gbuffer", path: "examples/gbuffer/index.html", w: 1360, h: 780 },
   { name: "antialiasing", path: "examples/antialiasing/index.html", w: 1360, h: 700 },
   { name: "instancing", path: "examples/instancing/index.html", w: 1360, h: 700 },
+  { name: "skybox", path: "examples/skybox/index.html", w: 1360, h: 700 },
   { name: "picking", path: "examples/picking/index.html", w: 1000, h: 720 },
   { name: "architecture", path: "docs/diagrams/pipeline.html", w: 1360, h: 640 },
   {

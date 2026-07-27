@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmerhabib/webgraphiclibrary/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/webgraphiclibrary)](https://www.npmjs.com/package/webgraphiclibrary)
+[![npm downloads](https://img.shields.io/npm/dm/webgraphiclibrary)](https://www.npmjs.com/package/webgraphiclibrary)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/webgraphiclibrary)](https://bundlephobia.com/package/webgraphiclibrary)
-[![types](https://img.shields.io/npm/types/webgraphiclibrary)](https://www.typescriptlang.org/)
+[![types](https://img.shields.io/npm/types/webgraphiclibrary)](docs/getting-started.md)
 [![license](https://img.shields.io/npm/l/webgraphiclibrary)](LICENSE.md)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ahmerhabib/webgraphiclibrary/badge)](https://scorecard.dev/viewer/?uri=github.com/ahmerhabib/webgraphiclibrary)
 
@@ -62,7 +63,7 @@ Its real neighbors are the low-level WebGL helpers — `twgl.js`, `regl`, `picog
 
 ## Showcase
 
-Every image below is real output from the [examples](examples), captured in a headless browser — no mock-ups.
+Every image below is real output from the [examples](examples), captured in a headless browser — no mock-ups. **[Run them live in your browser →](https://ahmerhabib.github.io/webgraphiclibrary/)**
 
 **Multiple render targets** — one geometry pass fills a `MultiTarget` (albedo, normals, depth); a lighting pass reads them back for deferred shading.
 
@@ -75,6 +76,10 @@ Every image below is real output from the [examples](examples), captured in a he
 **Instanced rendering** — 1,440 instances in one draw call: the attribute layout (including per-instance `divisor` attributes) is recorded once in a `VertexArray`, and the shared tint/rotation parameters stream through a `std140` `UniformBuffer`:
 
 ![Instanced flow field: 1,440 instances drawn with one call through a VertexArray and UniformBuffer](docs/screenshots/instancing-demo.png)
+
+**Skybox** — six procedurally generated faces uploaded through a `CubemapTexture` and sampled per-pixel along the view ray with `samplerCube`:
+
+![Skybox: a procedural sky with sun rendered from a CubemapTexture](docs/screenshots/skybox-demo.png)
 
 **Color-id picking** — draw ids into an off-screen `Framebuffer` and read one pixel back to identify the shape under the cursor:
 
@@ -267,7 +272,7 @@ import { Framebuffer, FBO } from "webgraphiclibrary/fbo";
 import { Shader } from "webgraphiclibrary/shader";
 import { Program } from "webgraphiclibrary/program";
 import { GLBuffer, UniformBuffer } from "webgraphiclibrary/buffer";
-import { Texture2D, readTexturePixels, readTexturePixelsInto } from "webgraphiclibrary/texture";
+import { Texture2D, CubemapTexture, readTexturePixels } from "webgraphiclibrary/texture";
 import { VertexArray } from "webgraphiclibrary/vao";
 import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphiclibrary/core";
 ```
@@ -278,7 +283,7 @@ import { WebGLError, DisposedResourceError, withSavedBindings } from "webgraphic
 | `…/shader`  | `Shader`                                                           | compile with stage-annotated, source-numbered errors                                                                                                    |
 | `…/program` | `Program`                                                          | link, `withUsed`, cached uniform lookups, typed `setUniform*` / `setTexture`, `enableAttribute`                                                         |
 | `…/buffer`  | `GLBuffer`, `UniformBuffer`                                        | typed uploads, `withBound`, `updateSubData` partial writes; WebGL2 std140 uniform blocks via `connect`/`bindTo`/`update`                                |
-| `…/texture` | `Texture2D`, `readTexturePixels(Into)`                             | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`                                                                                |
+| `…/texture` | `Texture2D`, `CubemapTexture`, `readTexturePixels(Into)`           | image/canvas/video uploads, `flipY`/`premultiplyAlpha`, `generateMipmap`; cube maps for skyboxes and environment maps                                   |
 | `…/vao`     | `VertexArray`                                                      | WebGL2 VAO: record the attribute layout once, restore it with one bind                                                                                  |
 | `…/core`    | `WebGLError`, `DisposedResourceError`, guards, `withSavedBindings` | shared errors, context checks, binding save/restore                                                                                                     |
 
@@ -311,10 +316,9 @@ scripts            Package verification and screenshot tooling
 ## Roadmap
 
 - Transform feedback wrapper and a small optional math utility
-- A live examples gallery
 - Investigate a backend-portable surface so a WebGPU path can be added without an API break — the wrappers already [map one-to-one onto WebGPU concepts](docs/comparison.md#webgpu-portability)
 
-Recently shipped: `VertexArray` (VAO) and `UniformBuffer` (std140 UBO) wrappers with an instanced-rendering example, WebGL2 multiple render targets (`MultiTarget`) and multisample resolve (`MultisampleTarget`), real-browser render tests, and TSDoc on every public export.
+Recently shipped: `CubemapTexture` with a skybox example, the [live demo gallery](https://ahmerhabib.github.io/webgraphiclibrary/), `VertexArray` (VAO) and `UniformBuffer` (std140 UBO) wrappers with an instanced-rendering example, WebGL2 multiple render targets and multisample resolve, real-browser render tests, and TSDoc on every public export.
 
 ## Contributing
 
