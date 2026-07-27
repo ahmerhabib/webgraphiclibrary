@@ -3,90 +3,60 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — skybox with CubemapTexture</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      body {
-        margin: 0;
-        background: #0b1017;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        width: 1280px;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-      }
-      .frame {
-        position: relative;
-        line-height: 0;
-      }
-      canvas {
-        display: block;
-        width: 1280px;
-        height: 512px;
-      }
-      .tag {
-        position: absolute;
-        top: 16px;
-        left: 16px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        background: rgba(9, 14, 20, 0.72);
-        color: #eaf2ff;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-      .caption {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        font-size: 14px;
-        color: #9db2c9;
-        border-top: 1px solid #1e2b3a;
-      }
-      .caption strong {
-        color: #eaf2ff;
-        font-weight: 650;
-      }
-      .pill {
-        font-size: 12.5px;
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        padding: 4px 10px;
-        border-radius: 999px;
-      }
-    </style>
+    <title>Skybox — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
   </head>
   <body>
-    <div class="card">
-      <div class="frame">
-        <canvas id="scene" width="1280" height="512"></canvas>
-        <span class="tag">6 procedural faces — 1 samplerCube</span>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/skybox/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>Skybox from a cube map</h1>
+        <p>
+          Six faces generated on the CPU — horizon gradient, zenith, sun disk — uploaded through a
+          <code>CubemapTexture</code> and sampled per pixel along the view ray with
+          <code>samplerCube</code>. <strong>Drag the canvas to look around.</strong>
+        </p>
       </div>
-      <div class="caption">
-        <span
-          ><strong>Skybox</strong> — six generated faces uploaded through a
-          <code>CubemapTexture</code>, sampled per-pixel along the view ray</span
-        >
-        <span class="pill">CubemapTexture · samplerCube</span>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="512" style="cursor: grab"></canvas>
+          <span class="tag">6 faces &mdash; 1 samplerCube</span>
+        </div>
+        <div class="caption">
+          <span><strong>Skybox</strong> — drag to look, adjust the field of view below</span>
+          <span class="chip">CubemapTexture</span>
+        </div>
       </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="fov">Field of view</label>
+          <input id="fov" type="range" min="0.35" max="1.1" step="0.01" value="0.6" />
+          <output>0.60</output>
+        </div>
+        <div class="control">
+          <button id="drift" class="toggle" aria-pressed="true">Auto-pan</button>
+        </div>
+      </div>
+
+      <p class="note">
+        The same <code>CubemapTexture</code> drives reflections and environment lighting — anywhere
+        GLSL wants a <code>samplerCube</code>. API reference:
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/texture.md"
+          >CubemapTexture</a
+        >.
+      </p>
     </div>
 
     <script type="module">
@@ -94,9 +64,10 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { CubemapTexture } from "../../dist/texture.js";
+      import { bindRange, bindToggle, startLoop } from "../assets/demo-shell.js";
 
       const canvas = document.querySelector("#scene");
-      const gl = canvas.getContext("webgl", { antialias: true });
+      const gl = canvas.getContext("webgl", { antialias: true, preserveDrawingBuffer: true });
 
       // Directions for texel (u, v) on each cubemap face, +X … -Z.
       const FACE_DIRS = [
@@ -176,11 +147,12 @@
           precision highp float;
           uniform samplerCube sky;
           uniform vec2 view; // (yaw, pitch)
+          uniform float fov;
           varying vec2 vNdc;
 
           void main() {
             float aspect = 1280.0 / 512.0;
-            vec3 ray = normalize(vec3(vNdc.x * aspect * 0.6, vNdc.y * 0.6, -1.0));
+            vec3 ray = normalize(vec3(vNdc.x * aspect * fov, vNdc.y * fov, -1.0));
 
             float cp = cos(view.y), sp = sin(view.y);
             ray = vec3(ray.x, ray.y * cp - ray.z * sp, ray.y * sp + ray.z * cp);
@@ -200,17 +172,57 @@
         data: new Float32Array([-1, -1, 3, -1, -1, 3])
       });
 
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      program.withUsed(() => {
-        program.enableAttribute("position", { buffer: quad, size: 2 });
-        // setTexture targets TEXTURE_2D, so bind the cube target by hand.
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap.texture);
-        program.setUniform1i("sky", 0).setUniform2f("view", -0.45, 0.15);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      let fov = 0.6;
+      let drift = true;
+      let yaw = -0.45;
+      let pitch = 0.15;
+      let dragging = false;
+      let lastX = 0;
+      let lastY = 0;
+      let lastT = 0;
+
+      bindRange(
+        "fov",
+        (v) => (fov = v),
+        (v) => v.toFixed(2)
+      );
+      bindToggle("drift", (on) => (drift = on));
+
+      canvas.addEventListener("pointerdown", (event) => {
+        dragging = true;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        canvas.style.cursor = "grabbing";
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        yaw += (event.clientX - lastX) * 0.004;
+        pitch = Math.max(-1.2, Math.min(1.2, pitch + (event.clientY - lastY) * 0.004));
+        lastX = event.clientX;
+        lastY = event.clientY;
+      });
+      canvas.addEventListener("pointerup", () => {
+        dragging = false;
+        canvas.style.cursor = "grab";
       });
 
-      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      startLoop((elapsed) => {
+        const dt = elapsed - lastT;
+        lastT = elapsed;
+        if (drift && !dragging) yaw += dt * 0.03;
+
+        program.withUsed(() => {
+          program.enableAttribute("position", { buffer: quad, size: 2 });
+          // setTexture targets TEXTURE_2D, so bind the cube target by hand.
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap.texture);
+          program.setUniform1i("sky", 0).setUniform2f("view", yaw, pitch).setUniform1f("fov", fov);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        });
+      });
     </script>
   </body>
 </html>

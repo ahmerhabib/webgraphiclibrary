@@ -3,21 +3,60 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — minimal triangle</title>
-    <style>
-      body {
-        margin: 0;
-        background: #0d1722;
-      }
-      canvas {
-        display: block;
-        width: 100vw;
-        height: 100vh;
-      }
-    </style>
+    <title>Minimal triangle — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
   </head>
   <body>
-    <canvas id="scene" width="960" height="600"></canvas>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/minimal-triangle/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>The smallest end-to-end render</h1>
+        <p>
+          <code>Shader</code> &rarr; <code>Program</code> &rarr; <code>GLBuffer</code> &rarr; one
+          draw call — nothing else. This page is meant to be read: view source for the complete,
+          unabridged program.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="560"></canvas>
+          <span class="tag">~20 lines of code</span>
+        </div>
+        <div class="caption">
+          <span
+            ><strong>Hello, triangle</strong> — the slider drives
+            <code>setUniform3f("color", &hellip;)</code></span
+          >
+          <span class="chip">Shader &middot; Program &middot; GLBuffer</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="hue">Hue</label>
+          <input id="hue" type="range" min="0" max="360" step="1" value="168" />
+          <output>168&deg;</output>
+        </div>
+      </div>
+
+      <p class="note">
+        Start here, then work through the
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/getting-started.md"
+          >getting-started guide</a
+        >.
+      </p>
+    </div>
 
     <script type="module">
       // The smallest end-to-end render using the resource wrappers:
@@ -25,9 +64,10 @@
       import { Shader } from "../../dist/shader.js";
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
+      import { bindRange } from "../assets/demo-shell.js";
 
       const canvas = document.querySelector("#scene");
-      const gl = canvas.getContext("webgl");
+      const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
       if (gl === null) {
         throw new Error("WebGL is not available in this browser.");
       }
@@ -56,19 +96,31 @@
 
       const geometry = new GLBuffer(gl, {
         target: gl.ARRAY_BUFFER,
-        data: new Float32Array([0.0, 0.8, -0.8, -0.8, 0.8, -0.8])
+        data: new Float32Array([0.0, 0.75, -0.55, -0.75, 0.55, -0.75])
       });
 
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clearColor(0.05, 0.09, 0.14, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+      function hsl(h) {
+        const f = (n) => {
+          const k = (n + h / 30) % 12;
+          return 0.45 - 0.28 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+        };
+        return [f(0), f(8), f(4)];
+      }
 
-      program.withUsed(() => {
-        program.setUniform3f("color", 0.16, 0.72, 0.62);
-        program.enableAttribute("position", { buffer: geometry, size: 2 });
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-      });
+      function render(hue) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.05, 0.09, 0.14, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
+        program.withUsed(() => {
+          const [r, g, b] = hsl(hue);
+          program.setUniform3f("color", r, g, b);
+          program.enableAttribute("position", { buffer: geometry, size: 2 });
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+        });
+      }
+
+      bindRange("hue", render, (v) => `${v}°`);
       window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
     </script>
   </body>

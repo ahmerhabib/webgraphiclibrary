@@ -1,9 +1,12 @@
 # Examples gallery
 
+**[Run every demo live in your browser →](https://ahmerhabib.github.io/webgraphiclibrary/)**
+
 Each example is a self-contained HTML page that imports the built package from
 `../../dist` — no bundler, no framework, just the library against a real WebGL
-context. Every image below is genuine rendered output captured in a headless
-browser.
+context. The showcase demos are interactive: sliders, pointer input, and
+toggles drive the library API while the scene runs. Every image below is
+genuine rendered output captured in a headless browser.
 
 ## Run them locally
 

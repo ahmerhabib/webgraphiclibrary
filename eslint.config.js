@@ -20,6 +20,17 @@ export default tseslint.config(
       }
     }
   },
+  {
+    files: ["examples/**/*.js"],
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        performance: "readonly",
+        requestAnimationFrame: "readonly"
+      }
+    }
+  },
   ...typeCheckedConfigs,
   {
     files: ["packages/**/*.ts", "tsup.config.ts", "vitest.config.ts"],

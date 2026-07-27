@@ -3,105 +3,74 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — bloom post-processing</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      body {
-        margin: 0;
-        background: #0b1017;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        width: 1280px;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-      }
-      .frame {
-        position: relative;
-        line-height: 0;
-      }
-      canvas {
-        display: block;
-        width: 1280px;
-        height: 512px;
-      }
-      .divider {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        width: 1px;
-        background: rgba(255, 255, 255, 0.35);
-      }
-      .tag {
-        position: absolute;
-        top: 16px;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 14px;
-        font-weight: 600;
-        letter-spacing: 0.01em;
-        background: rgba(9, 14, 20, 0.72);
-        color: #eaf2ff;
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-      }
-      .tag.left {
-        left: 16px;
-      }
-      .tag.right {
-        right: 16px;
-      }
-      .caption {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 20px;
-        font-size: 14px;
-        color: #9db2c9;
-        border-top: 1px solid #1e2b3a;
-        line-height: 1.4;
-      }
-      .caption strong {
-        color: #eaf2ff;
-        font-weight: 650;
-      }
-      .pill {
-        font-size: 12.5px;
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        padding: 4px 10px;
-        border-radius: 999px;
-      }
-    </style>
+    <title>Bloom post-processing — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
   </head>
   <body>
-    <div class="card">
-      <div class="frame">
-        <canvas id="scene" width="1280" height="512"></canvas>
-        <div class="divider"></div>
-        <span class="tag left">Input scene → Framebuffer</span>
-        <span class="tag right">Bloom + tone-mapped</span>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/postprocessing/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>Bloom post-processing</h1>
+        <p>
+          Four orbiting emitters rendered off-screen, then bright-pass &rarr; separable Gaussian
+          blur &rarr; composite — a chain of <code>Framebuffer</code>s. Drag the sliders while it
+          runs; the passes reallocate nothing and every binding is restored after each one.
+        </p>
       </div>
-      <div class="caption">
-        <span><strong>Post-processing</strong> — bright-pass → separable blur → composite</span>
-        <span class="pill">5 × Framebuffer · Program · GLBuffer</span>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="512"></canvas>
+          <span class="tag" id="tag">5 passes / frame</span>
+        </div>
+        <div class="caption">
+          <span
+            ><strong>Left:</strong> the raw off-screen scene &middot; <strong>Right:</strong> the
+            same texture with the bloom chain applied</span
+          >
+          <span class="chip">Framebuffer &times;4</span>
+        </div>
       </div>
+
+      <div class="controls">
+        <div class="control">
+          <label for="threshold">Threshold</label>
+          <input id="threshold" type="range" min="0" max="1.2" step="0.01" value="0.75" />
+          <output>0.75</output>
+        </div>
+        <div class="control">
+          <label for="intensity">Intensity</label>
+          <input id="intensity" type="range" min="0" max="3" step="0.05" value="1.4" />
+          <output>1.40</output>
+        </div>
+        <div class="control">
+          <label for="passes">Blur passes</label>
+          <input id="passes" type="range" min="1" max="4" step="1" value="1" />
+          <output>1</output>
+        </div>
+        <div class="control">
+          <button id="animate" class="toggle" aria-pressed="true">Animate</button>
+        </div>
+      </div>
+
+      <p class="note">
+        The pipeline: scene &rarr; bright-pass (threshold) &rarr; N&times; horizontal + vertical
+        blur at quarter resolution &rarr; additive composite with tone mapping. See the
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/framebuffer.md"
+          >Framebuffer reference</a
+        >
+        for the API used here.
+      </p>
     </div>
 
     <script type="module">
@@ -109,9 +78,10 @@
       import { Program } from "../../dist/program.js";
       import { GLBuffer } from "../../dist/buffer.js";
       import { Framebuffer } from "../../dist/fbo.js";
+      import { bindRange, bindToggle, startLoop } from "../assets/demo-shell.js";
 
       const canvas = document.querySelector("#scene");
-      const gl = canvas.getContext("webgl", { antialias: false });
+      const gl = canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: true });
       if (gl === null) throw new Error("WebGL is not available.");
 
       const HALF_W = 640;
@@ -130,40 +100,34 @@
         void main() { uv = position * 0.5 + 0.5; gl_Position = vec4(position, 0.0, 1.0); }
       `;
 
-      const sceneProgram = program(
-        VERT,
-        `
+      const sceneProgram = program(`
         precision highp float;
         varying vec2 uv;
+        uniform vec2 orbs[4];
         float blob(vec2 p, vec2 c, float r) { return smoothstep(r, r * 0.72, length(p - c)); }
         void main() {
           vec3 col = mix(vec3(0.02, 0.03, 0.06), vec3(0.05, 0.07, 0.13), uv.y);
-          col += vec3(1.0, 0.42, 0.2) * blob(uv, vec2(0.30, 0.56), 0.13) * 2.4;
-          col += vec3(0.28, 0.8, 1.0) * blob(uv, vec2(0.56, 0.4), 0.1) * 2.4;
-          col += vec3(0.75, 0.42, 1.0) * blob(uv, vec2(0.73, 0.63), 0.085) * 2.4;
-          col += vec3(0.95, 0.88, 0.42) * blob(uv, vec2(0.44, 0.74), 0.05) * 2.8;
+          col += vec3(1.0, 0.42, 0.2) * blob(uv, orbs[0], 0.13) * 2.4;
+          col += vec3(0.28, 0.8, 1.0) * blob(uv, orbs[1], 0.10) * 2.4;
+          col += vec3(0.75, 0.42, 1.0) * blob(uv, orbs[2], 0.085) * 2.4;
+          col += vec3(0.95, 0.88, 0.42) * blob(uv, orbs[3], 0.05) * 2.8;
           gl_FragColor = vec4(col, 1.0);
         }
-      `
-      );
+      `);
 
-      const brightProgram = program(
-        VERT,
-        `
+      const brightProgram = program(`
         precision highp float;
         varying vec2 uv;
         uniform sampler2D source;
+        uniform float threshold;
         void main() {
           vec3 c = texture2D(source, uv).rgb;
-          float b = max(0.0, max(c.r, max(c.g, c.b)) - 0.75);
+          float b = max(0.0, max(c.r, max(c.g, c.b)) - threshold);
           gl_FragColor = vec4(c * b, 1.0);
         }
-      `
-      );
+      `);
 
-      const blurProgram = program(
-        VERT,
-        `
+      const blurProgram = program(`
         precision highp float;
         varying vec2 uv;
         uniform sampler2D source;
@@ -178,12 +142,9 @@
           s += texture2D(source, uv - direction * 3.0).rgb * 0.054054;
           gl_FragColor = vec4(s, 1.0);
         }
-      `
-      );
+      `);
 
-      const plainProgram = program(
-        VERT,
-        `
+      const plainProgram = program(`
         precision highp float;
         varying vec2 uv;
         uniform sampler2D source;
@@ -193,70 +154,113 @@
           c = pow(c, vec3(0.9));
           gl_FragColor = vec4(c, 1.0);
         }
-      `
-      );
+      `);
 
-      const compositeProgram = program(
-        VERT,
-        `
+      const compositeProgram = program(`
         precision highp float;
         varying vec2 uv;
         uniform sampler2D scene;
         uniform sampler2D bloom;
+        uniform float intensity;
         void main() {
-          vec3 c = texture2D(scene, uv).rgb + texture2D(bloom, uv).rgb * 1.4;
+          vec3 c = texture2D(scene, uv).rgb + texture2D(bloom, uv).rgb * intensity;
           c = c / (c + vec3(1.0));
           c = pow(c, vec3(0.9));
           c *= smoothstep(1.15, 0.35, distance(uv, vec2(0.5)));
           gl_FragColor = vec4(c, 1.0);
         }
-      `
-      );
+      `);
 
       const sceneFbo = new Framebuffer(gl, { width: HALF_W, height: H });
       const brightFbo = new Framebuffer(gl, { width: LOW_W, height: LOW_H });
-      const blurHFbo = new Framebuffer(gl, { width: LOW_W, height: LOW_H });
-      const bloomFbo = new Framebuffer(gl, { width: LOW_W, height: LOW_H });
+      const pingFbo = new Framebuffer(gl, { width: LOW_W, height: LOW_H });
+      const pongFbo = new Framebuffer(gl, { width: LOW_W, height: LOW_H });
 
-      // Pass 1: render the scene into an off-screen target.
-      sceneFbo.withBound(() => {
+      let threshold = 0.75;
+      let intensity = 1.4;
+      let passes = 1;
+      let animate = true;
+      let frozen = 0;
+
+      const tag = document.getElementById("tag");
+      bindRange(
+        "threshold",
+        (v) => (threshold = v),
+        (v) => v.toFixed(2)
+      );
+      bindRange(
+        "intensity",
+        (v) => (intensity = v),
+        (v) => v.toFixed(2)
+      );
+      bindRange("passes", (v) => {
+        passes = v;
+        tag.textContent = `${3 + passes * 2} passes / frame`;
+      });
+      bindToggle("animate", (on) => (animate = on));
+
+      const orbs = new Float32Array(8);
+
+      startLoop((elapsed) => {
+        if (animate) frozen = elapsed;
+        const t = frozen * 0.55;
+        orbs.set([
+          0.3 + 0.1 * Math.sin(t),
+          0.56 + 0.07 * Math.cos(t * 1.2),
+          0.56 + 0.09 * Math.cos(t * 0.8),
+          0.4 + 0.08 * Math.sin(t * 1.4),
+          0.73 + 0.06 * Math.sin(t * 1.1 + 2.0),
+          0.63 + 0.09 * Math.cos(t * 0.9),
+          0.44 + 0.11 * Math.cos(t * 0.7 + 1.0),
+          0.74 + 0.05 * Math.sin(t * 1.6)
+        ]);
+
+        // Pass 1: render the scene into an off-screen target.
+        sceneFbo.withBound(() => {
+          gl.viewport(0, 0, HALF_W, H);
+          draw(sceneProgram, (p) => p.setUniform2fv("orbs[0]", orbs));
+        });
+
+        // Pass 2: bright-pass into a low-res target.
+        brightFbo.withBound(() => {
+          gl.viewport(0, 0, LOW_W, LOW_H);
+          draw(brightProgram, (p) => {
+            p.setTexture("source", sceneFbo.texture, 0);
+            p.setUniform1f("threshold", threshold);
+          });
+        });
+
+        // Passes 3+: separable Gaussian blur, ping-ponging two targets.
+        let input = brightFbo;
+        for (let i = 0; i < passes; i += 1) {
+          pingFbo.withBound(() => {
+            gl.viewport(0, 0, LOW_W, LOW_H);
+            draw(blurProgram, (p) => {
+              p.setTexture("source", input.texture, 0);
+              p.setUniform2f("direction", 1.0 / LOW_W, 0.0);
+            });
+          });
+          pongFbo.withBound(() => {
+            gl.viewport(0, 0, LOW_W, LOW_H);
+            draw(blurProgram, (p) => {
+              p.setTexture("source", pingFbo.texture, 0);
+              p.setUniform2f("direction", 0.0, 1.0 / LOW_H);
+            });
+          });
+          input = pongFbo;
+        }
+
+        // Composite to screen: left = input scene, right = bloom + tone-mapped.
         gl.viewport(0, 0, HALF_W, H);
-        draw(sceneProgram);
-      });
+        draw(plainProgram, (p) => p.setTexture("source", sceneFbo.texture, 0));
 
-      // Pass 2: bright-pass into a low-res target.
-      brightFbo.withBound(() => {
-        gl.viewport(0, 0, LOW_W, LOW_H);
-        draw(brightProgram, (p) => p.setTexture("source", sceneFbo.texture, 0));
-      });
-
-      // Pass 3 + 4: separable Gaussian blur (horizontal, then vertical).
-      blurHFbo.withBound(() => {
-        gl.viewport(0, 0, LOW_W, LOW_H);
-        draw(blurProgram, (p) => {
-          p.setTexture("source", brightFbo.texture, 0);
-          p.setUniform2f("direction", 1.0 / LOW_W, 0.0);
+        gl.viewport(HALF_W, 0, HALF_W, H);
+        draw(compositeProgram, (p) => {
+          p.setTexture("scene", sceneFbo.texture, 0);
+          p.setTexture("bloom", input.texture, 1);
+          p.setUniform1f("intensity", intensity);
         });
       });
-      bloomFbo.withBound(() => {
-        gl.viewport(0, 0, LOW_W, LOW_H);
-        draw(blurProgram, (p) => {
-          p.setTexture("source", blurHFbo.texture, 0);
-          p.setUniform2f("direction", 0.0, 1.0 / LOW_H);
-        });
-      });
-
-      // Composite to screen: left = input scene, right = bloom + tone-mapped.
-      gl.viewport(0, 0, HALF_W, H);
-      draw(plainProgram, (p) => p.setTexture("source", sceneFbo.texture, 0));
-
-      gl.viewport(HALF_W, 0, HALF_W, H);
-      draw(compositeProgram, (p) => {
-        p.setTexture("scene", sceneFbo.texture, 0);
-        p.setTexture("bloom", bloomFbo.texture, 1);
-      });
-
-      window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
 
       function draw(prog, configure) {
         prog.withUsed(() => {
@@ -266,11 +270,13 @@
         });
       }
 
-      function program(vertexSource, fragmentSource) {
-        return new Program(gl, {
-          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
-          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
-        });
+      function program(fragmentSource) {
+        const vertexShader = new Shader(gl, { type: gl.VERTEX_SHADER, source: VERT });
+        const fragmentShader = new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource });
+        const built = new Program(gl, { vertexShader, fragmentShader });
+        vertexShader.dispose();
+        fragmentShader.dispose();
+        return built;
       }
     </script>
   </body>

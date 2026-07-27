@@ -6,17 +6,28 @@
     <title>webgraphiclibrary — live WebGL demos</title>
     <meta
       name="description"
-      content="Live, in-browser demos of webgraphiclibrary: typed WebGL and WebGL2 resource wrappers with state-restoration guarantees and zero dependencies."
+      content="Interactive, in-browser demos of webgraphiclibrary: typed WebGL and WebGL2 resource wrappers with state-restoration guarantees and zero dependencies."
     />
     <style>
       :root {
         color-scheme: dark;
+        --bg: #0e1116;
+        --surface: #151a21;
+        --border: #232b36;
+        --border-strong: #313c4b;
+        --text: #aebccd;
+        --heading: #e8eff8;
+        --dim: #7d8ea1;
+        --accent: #45c6a5;
+        --accent-soft: rgba(69, 198, 165, 0.12);
+        --accent-border: rgba(69, 198, 165, 0.35);
+        --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
         font-family:
-          Inter,
           ui-sans-serif,
           system-ui,
           -apple-system,
           "Segoe UI",
+          Roboto,
           sans-serif;
       }
       * {
@@ -24,179 +35,356 @@
       }
       body {
         margin: 0;
-        background: #0b1017;
-        color: #9db2c9;
-        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 15px;
+        line-height: 1.55;
       }
       .wrap {
-        max-width: 1180px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 48px 24px 72px;
+        padding: 22px 22px 64px;
       }
-      h1 {
-        color: #eaf2ff;
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-bottom: 40px;
+      }
+      .wordmark {
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--heading);
+        text-decoration: none;
+        letter-spacing: -0.01em;
+      }
+      .wordmark span {
+        color: var(--accent);
+      }
+      nav {
+        display: flex;
+        gap: 4px;
+      }
+      nav a {
+        display: inline-flex;
+        align-items: center;
+        color: var(--dim);
+        text-decoration: none;
+        font-size: 13.5px;
+        line-height: 1;
+        padding: 8px 11px;
+        border-radius: 7px;
+        border: 1px solid transparent;
+      }
+      nav a:hover {
+        color: var(--heading);
+        border-color: var(--border);
+        background: var(--surface);
+      }
+
+      .hero {
+        max-width: 720px;
+        margin-bottom: 14px;
+      }
+      .hero h1 {
+        color: var(--heading);
         font-size: 34px;
-        margin: 0 0 10px;
-        letter-spacing: -0.02em;
+        font-weight: 700;
+        letter-spacing: -0.022em;
+        line-height: 1.15;
+        margin: 0 0 14px;
       }
-      .lede {
-        font-size: 17px;
-        line-height: 1.6;
-        max-width: 760px;
+      .hero p {
+        margin: 0 0 20px;
+        font-size: 16px;
+      }
+      .hero code,
+      .card p code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        color: var(--accent);
+      }
+
+      .install {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--heading);
+        background: var(--surface);
+        border: 1px solid var(--border-strong);
+        border-radius: 8px;
+        padding: 10px 14px;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .install::before {
+        content: "$";
+        color: var(--dim);
+      }
+
+      .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 18px 0 44px;
+      }
+      .fact {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 11px;
+        border-radius: 7px;
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1;
+        white-space: nowrap;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
         margin: 0 0 18px;
       }
-      .lede strong {
-        color: #eaf2ff;
+      .section-head h2 {
+        color: var(--heading);
+        font-size: 19px;
+        font-weight: 650;
+        letter-spacing: -0.015em;
+        margin: 0;
       }
-      .links {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin: 0 0 40px;
+      .section-head p {
+        margin: 0;
+        font-size: 13.5px;
+        color: var(--dim);
       }
-      .links a {
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 600;
-        padding: 8px 16px;
-        border-radius: 999px;
-      }
-      .links a:hover {
-        background: rgba(42, 143, 122, 0.3);
-      }
+
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-        gap: 22px;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 20px;
       }
       .card {
         display: block;
         text-decoration: none;
-        border-radius: 14px;
+        border-radius: 12px;
         overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        transition: border-color 0.15s ease;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        transition: border-color 0.12s ease;
       }
       .card:hover {
-        border-color: #2a8f7a;
+        border-color: var(--accent-border);
       }
-      .card img {
-        display: block;
+      .thumb {
+        position: relative;
+        line-height: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .thumb img {
         width: 100%;
-        aspect-ratio: 1360 / 700;
+        aspect-ratio: 2 / 1;
         object-fit: cover;
-        border-bottom: 1px solid #1e2b3a;
+        object-position: left top;
+        display: block;
+      }
+      .badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 9px;
+        border-radius: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        line-height: 1;
+        white-space: nowrap;
+        color: var(--accent);
+        background: rgba(10, 14, 19, 0.82);
+        border: 1px solid var(--accent-border);
       }
       .card .meta {
-        padding: 14px 16px 16px;
+        padding: 13px 15px 15px;
       }
-      .card h2 {
-        margin: 0 0 6px;
-        font-size: 16px;
-        color: #eaf2ff;
+      .card h3 {
+        margin: 0 0 5px;
+        font-size: 15.5px;
+        font-weight: 600;
+        color: var(--heading);
       }
       .card p {
         margin: 0;
         font-size: 13.5px;
         line-height: 1.5;
-        color: #9db2c9;
+        color: var(--dim);
       }
-      .card code {
-        color: #7fd4c1;
-        font-size: 12.5px;
-      }
+
       footer {
-        margin-top: 48px;
+        margin-top: 52px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
         font-size: 13.5px;
-        color: #6b7f95;
+        color: var(--dim);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
       }
       footer a {
-        color: #9db2c9;
+        color: var(--text);
       }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <h1>webgraphiclibrary — live demos</h1>
-      <p class="lede">
-        <strong
-          >Typed WebGL &amp; WebGL2 resource wrappers for people who write their own render
-          loop.</strong
-        >
-        Every demo below runs live in your browser against the real built library — no bundler, no
-        framework. View source on any page to see exactly how it is made.
-      </p>
-      <div class="links">
-        <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
-        <a href="https://www.npmjs.com/package/webgraphiclibrary">npm</a>
-        <a href="https://github.com/ahmerhabib/webgraphiclibrary#readme">Documentation</a>
+      <header>
+        <a class="wordmark" href="./">webgraphiclibrary<span>/demos</span></a>
+        <nav>
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+          <a href="https://www.npmjs.com/package/webgraphiclibrary">npm</a>
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary#readme">Docs</a>
+        </nav>
+      </header>
+
+      <div class="hero">
+        <h1>Typed WebGL wrappers,<br />shown live.</h1>
+        <p>
+          webgraphiclibrary gives framebuffers, shaders, programs, buffers, and textures a small,
+          strongly-typed lifecycle API — with state restoration guaranteed after every operation.
+          Each demo below runs in your browser against the real built library, imported straight
+          from <code>dist/</code>. No bundler, no framework; view source on any page.
+        </p>
+        <span class="install">npm install webgraphiclibrary</span>
+        <div class="facts">
+          <span class="fact">zero runtime dependencies</span>
+          <span class="fact">~21 kB min+gzip, tree-shakeable</span>
+          <span class="fact">WebGL 1 + 2</span>
+          <span class="fact">MIT</span>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2>Demos</h2>
+        <p>drag, hover, and tweak — every control drives the library API</p>
       </div>
 
       <div class="grid">
         <a class="card" href="examples/postprocessing/">
-          <img src="docs/screenshots/postprocessing-demo.png" alt="Bloom post-processing demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/postprocessing-thumb.png" alt="Bloom post-processing demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>Bloom post-processing</h2>
-            <p>Bright-pass → blur → composite across five <code>Framebuffer</code>s.</p>
+            <h3>Bloom post-processing</h3>
+            <p>
+              Bright-pass, blur, and composite across a chain of <code>Framebuffer</code>s — with
+              threshold, intensity, and pass-count controls.
+            </p>
           </div>
         </a>
         <a class="card" href="examples/gbuffer/">
-          <img src="docs/screenshots/gbuffer-demo.png" alt="Deferred shading G-buffer demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/gbuffer-thumb.png" alt="Deferred shading G-buffer demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>Deferred G-buffer (MRT)</h2>
-            <p>One geometry pass fills three attachments via <code>MultiTarget</code>.</p>
+            <h3>Deferred G-buffer</h3>
+            <p>
+              One pass fills three <code>MultiTarget</code> attachments; your pointer steers the
+              deferred light.
+            </p>
           </div>
         </a>
         <a class="card" href="examples/antialiasing/">
-          <img src="docs/screenshots/antialiasing-demo.png" alt="MSAA comparison demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/antialiasing-thumb.png" alt="MSAA comparison demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>4× MSAA</h2>
-            <p>Aliased vs. multisampled, resolved with <code>MultisampleTarget</code>.</p>
+            <h3>MSAA, side by side</h3>
+            <p>
+              Switch sample counts live — the <code>MultisampleTarget</code> is disposed and
+              recreated under a rotating aliasing stress test.
+            </p>
           </div>
         </a>
         <a class="card" href="examples/instancing/">
-          <img src="docs/screenshots/instancing-demo.png" alt="Instancing demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/instancing-thumb.png" alt="Instancing demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>Instancing</h2>
+            <h3>Instancing</h3>
             <p>
-              1,440 instances in one draw call: <code>VertexArray</code> +
-              <code>UniformBuffer</code>.
+              Thousands of instances in one draw call through a <code>VertexArray</code>; scrub the
+              count and watch <code>GLBuffer.upload()</code> keep up.
             </p>
           </div>
         </a>
         <a class="card" href="examples/skybox/">
-          <img src="docs/screenshots/skybox-demo.png" alt="Skybox demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/skybox-thumb.png" alt="Skybox demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>Skybox</h2>
-            <p>Six procedural faces through a <code>CubemapTexture</code>, sampled per-pixel.</p>
+            <h3>Skybox</h3>
+            <p>
+              Drag to look around a procedural <code>CubemapTexture</code> sampled per pixel with
+              <code>samplerCube</code>.
+            </p>
           </div>
         </a>
         <a class="card" href="examples/picking/">
-          <img src="docs/screenshots/picking-demo.png" alt="Color-id picking demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/picking-thumb.png" alt="Color-id picking demo" />
+            <span class="badge">interactive</span>
+          </div>
           <div class="meta">
-            <h2>GPU picking</h2>
-            <p>Color-id readback with zero per-frame allocation via <code>readPixelsInto</code>.</p>
+            <h3>GPU picking</h3>
+            <p>
+              Hover to identify shapes via a one-pixel <code>readPixels</code> against an id buffer
+              — timing shown live.
+            </p>
           </div>
         </a>
         <a class="card" href="examples/minimal-triangle/">
-          <img src="docs/screenshots/minimal-triangle-demo.png" alt="Minimal triangle demo" />
+          <div class="thumb">
+            <img src="docs/screenshots/minimal-triangle-thumb.png" alt="Minimal triangle demo" />
+            <span class="badge">start here</span>
+          </div>
           <div class="meta">
-            <h2>Minimal triangle</h2>
-            <p><code>Shader</code> + <code>Program</code> + <code>GLBuffer</code>, nothing else.</p>
+            <h3>Minimal triangle</h3>
+            <p>
+              The smallest end-to-end render — <code>Shader</code>, <code>Program</code>,
+              <code>GLBuffer</code>, one draw call. Meant to be read.
+            </p>
           </div>
         </a>
       </div>
 
       <footer>
-        MIT licensed ·
-        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/LICENSE.md"
-          >ahmerhabib</a
+        <span
+          >MIT ·
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/LICENSE.md"
+            >ahmerhabib</a
+          ></span
         >
-        · zero runtime dependencies · every screenshot above is this code's real output
+        <span>every thumbnail is real output captured from these pages</span>
+        <span
+          ><a href="https://github.com/ahmerhabib/webgraphiclibrary/tree/main/examples"
+            >example sources</a
+          ></span
+        >
       </footer>
     </div>
   </body>

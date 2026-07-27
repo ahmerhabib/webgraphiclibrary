@@ -3,116 +3,85 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>webgraphiclibrary — color-id picking</title>
+    <title>GPU picking — webgraphiclibrary</title>
+    <link rel="stylesheet" href="../assets/demo.css" />
     <style>
-      :root {
-        color-scheme: dark;
-        font-family:
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          -apple-system,
-          "Segoe UI",
-          sans-serif;
-      }
-      body {
-        margin: 0;
-        background: #0b1017;
-        display: grid;
-        place-items: center;
-        min-height: 100vh;
-      }
-      .card {
-        width: 960px;
-        border-radius: 14px;
-        overflow: hidden;
-        background: #0d1520;
-        border: 1px solid #1e2b3a;
-        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
-      }
+      /* Page-specific overlays for the pick marker and callout. */
       .frame {
-        position: relative;
-        line-height: 0;
-      }
-      canvas {
-        display: block;
-        width: 960px;
-        height: 420px;
         cursor: crosshair;
       }
-      .callout {
-        position: absolute;
-        transform: translate(-50%, -140%);
-        padding: 7px 12px;
-        border-radius: 10px;
-        font-size: 13.5px;
-        font-weight: 600;
-        white-space: nowrap;
-        background: #eaf2ff;
-        color: #0d1520;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      }
-      .callout::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        top: 100%;
-        transform: translateX(-50%);
-        border: 7px solid transparent;
-        border-top-color: #eaf2ff;
-      }
-      .callout code {
-        color: #2a6f8f;
-        font-weight: 700;
-      }
-      .dot {
+      #dot {
         position: absolute;
         width: 10px;
         height: 10px;
-        margin: -5px 0 0 -5px;
-        border-radius: 999px;
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+        border-radius: 50%;
+        border: 2px solid #fff;
+        background: rgba(255, 255, 255, 0.25);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
       }
-      .caption {
-        display: flex;
-        justify-content: space-between;
+      #callout {
+        position: absolute;
+        transform: translate(14px, -50%);
+        display: inline-flex;
         align-items: center;
-        padding: 14px 20px;
-        font-size: 14px;
-        color: #9db2c9;
-        border-top: 1px solid #1e2b3a;
-      }
-      .caption strong {
-        color: #eaf2ff;
-        font-weight: 650;
-      }
-      .pill {
-        font-size: 12.5px;
-        color: #7fd4c1;
-        background: rgba(42, 143, 122, 0.16);
-        border: 1px solid rgba(42, 143, 122, 0.4);
-        padding: 4px 10px;
-        border-radius: 999px;
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 7px;
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1;
+        white-space: nowrap;
+        color: #e8eff8;
+        background: rgba(10, 14, 19, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        pointer-events: none;
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <div class="frame">
-        <canvas id="scene" width="960" height="420"></canvas>
-        <div class="dot" id="dot"></div>
-        <div class="callout" id="callout">
-          <code>readPixelsInto()</code> → id <span id="idValue">–</span>
+    <div class="wrap">
+      <header class="top">
+        <a href="../../">&larr; All demos</a>
+        <nav class="top-links">
+          <a
+            href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/examples/picking/index.html"
+            >View source</a
+          >
+          <a href="https://github.com/ahmerhabib/webgraphiclibrary">GitHub</a>
+        </nav>
+      </header>
+
+      <div class="intro">
+        <h1>GPU picking with color ids</h1>
+        <p>
+          Each shape is rendered into an off-screen <code>Framebuffer</code> with its id encoded as
+          a color. <strong>Move your pointer over the canvas</strong> — a one-pixel readback under
+          the cursor identifies the shape with no CPU ray-casting and no scene graph.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="frame">
+          <canvas id="scene" width="1280" height="640"></canvas>
+          <span id="dot"></span>
+          <span id="callout">id: <span id="idValue">4</span></span>
+          <span class="tag">1&times;1 px readback</span>
+        </div>
+        <div class="caption">
+          <span><strong>Under cursor:</strong> <code id="readout">id 4 · 0.0 ms</code></span>
+          <span class="chip">Framebuffer &middot; readPixels</span>
         </div>
       </div>
-      <div class="caption">
-        <span
-          ><strong>Picking</strong> — draw ids into an off-screen target, read one pixel back to
-          identify the shape under the cursor</span
-        >
-        <span class="pill">Framebuffer · readPixelsInto · 1&nbsp;px</span>
-      </div>
+
+      <p class="note">
+        The id buffer re-renders only when the scene changes; picking is just
+        <code>readPixels(x, y, 1, 1)</code> against it. The same pattern scales to thousands of
+        objects — ids are cheap. API reference:
+        <a href="https://github.com/ahmerhabib/webgraphiclibrary/blob/main/docs/framebuffer.md"
+          >Framebuffer readback</a
+        >.
+      </p>
     </div>
 
     <script type="module">
@@ -125,7 +94,8 @@
       const callout = document.querySelector("#callout");
       const dot = document.querySelector("#dot");
       const idValue = document.querySelector("#idValue");
-      const gl = canvas.getContext("webgl2");
+      const readout = document.querySelector("#readout");
+      const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true });
       if (gl === null) throw new Error("WebGL2 is not available.");
 
       const W = canvas.width;
@@ -200,7 +170,7 @@
       pick(Math.round(0.68 * W), Math.round(0.6 * H));
       window.__WEBGRAPHICLIBRARY_DEMO_READY__ = true;
 
-      canvas.addEventListener("mousemove", (event) => {
+      canvas.addEventListener("pointermove", (event) => {
         const rect = canvas.getBoundingClientRect();
         pick(
           Math.round(((event.clientX - rect.left) / rect.width) * W),
@@ -209,13 +179,17 @@
       });
 
       function pick(gx, gy) {
+        const start = performance.now();
         idTarget.withBound(() => gl.readPixels(gx, gy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel));
+        const ms = performance.now() - start;
         const id = pixel[0];
 
         gl.viewport(0, 0, W, H);
         draw(viewProgram, (p) => p.setUniform1f("selected", id));
 
-        idValue.textContent = id === 0 ? "— (background)" : String(id);
+        idValue.textContent = id === 0 ? "—" : String(id);
+        readout.textContent =
+          id === 0 ? `background · ${ms.toFixed(1)} ms` : `id ${id} · ${ms.toFixed(1)} ms`;
         const cssX = (gx / W) * 100;
         const cssY = (1 - gy / H) * 100;
         callout.style.left = `${cssX}%`;
@@ -232,10 +206,12 @@
         });
       }
       function program(vertexSource, fragmentSource) {
-        return new Program(gl, {
-          vertexShader: new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource }),
-          fragmentShader: new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource })
-        });
+        const vertexShader = new Shader(gl, { type: gl.VERTEX_SHADER, source: vertexSource });
+        const fragmentShader = new Shader(gl, { type: gl.FRAGMENT_SHADER, source: fragmentSource });
+        const built = new Program(gl, { vertexShader, fragmentShader });
+        vertexShader.dispose();
+        fragmentShader.dispose();
+        return built;
       }
     </script>
   </body>
