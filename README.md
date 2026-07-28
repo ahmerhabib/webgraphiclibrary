@@ -7,6 +7,7 @@
 [![types](https://img.shields.io/npm/types/webgraphiclibrary)](docs/getting-started.md)
 [![license](https://img.shields.io/npm/l/webgraphiclibrary)](LICENSE.md)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/ahmerhabib/webgraphiclibrary/badge)](https://scorecard.dev/viewer/?uri=github.com/ahmerhabib/webgraphiclibrary)
+[![OpenSSF best practices](https://www.bestpractices.dev/projects/13837/badge)](https://www.bestpractices.dev/projects/13837)
 
 **Typed WebGL resource wrappers for people who write their own render loop.**
 
