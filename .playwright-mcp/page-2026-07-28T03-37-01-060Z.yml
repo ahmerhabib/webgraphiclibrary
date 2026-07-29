@@ -1,0 +1,214 @@
+- generic [active] [ref=f11e1]:
+    - banner [ref=f11e2]:
+        - navigation [ref=f11e4]:
+            - generic [ref=f11e5]:
+                - link "OpenSSF Best Practices" [ref=f11e6] [cursor=pointer]:
+                    - /url: /en
+                - button "Toggle collapsible navigation" [ref=f11e8] [cursor=pointer]
+            - text:   ✓  ✓   ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+    - generic [ref=f11e12]: You are already logged in.
+    - generic [ref=f11e13]:
+        - generic [ref=f11e14]:
+            - generic [ref=f11e15]:
+                - heading "OpenSSF Best Practices Badge Program" [level=2] [ref=f11e16]
+                - link "Get Your Badge Now!" [ref=f11e17] [cursor=pointer]:
+                    - /url: /en/projects/new
+                - paragraph [ref=f11e18]:
+                    - text: The
+                    - link "Open Source Security Foundation (OpenSSF)" [ref=f11e19] [cursor=pointer]:
+                        - /url: https://openssf.org
+                    - text: Best Practices badge is a way for Free/Libre and Open Source Software (FLOSS) projects to show that they follow best practices. Projects can voluntarily self-certify, at no cost, by using this web application to explain how they follow each best practice. The OpenSSF Best Practices Badge is inspired by the many badges available to projects on GitHub. Consumers of the badge can quickly assess which FLOSS projects are following best practices and as a result are more likely to produce higher-quality secure software.
+                - paragraph [ref=f11e20]:
+                    - text: You can easily see the
+                    - link "criteria for the passing badge" [ref=f11e21] [cursor=pointer]:
+                        - /url: /en/criteria/0
+                    - text: . Automated analysis will determine many of the criteria answers for you (and prevent obviously incorrect answers). More information on the OpenSSF Best Practices Badging program is
+                    - link "available on GitHub" [ref=f11e22] [cursor=pointer]:
+                        - /url: https://github.com/ossf/best-practices-badge
+                    - text: .
+                    - link "Project statistics" [ref=f11e23] [cursor=pointer]:
+                        - /url: /en/project_stats
+                    - text: and
+                    - link "criteria statistics" [ref=f11e24] [cursor=pointer]:
+                        - /url: /en/criteria_stats
+                    - text: are available. The
+                    - link "projects page" [ref=f11e25] [cursor=pointer]:
+                        - /url: /en/projects
+                    - text: shows participating projects and supports queries (e.g., you can see
+                    - link "projects that have a passing badge" [ref=f11e26] [cursor=pointer]:
+                        - /url: /en/projects?gteq=100
+                    - text: ). You can also see
+                    - link "an example (where we try to earn our own badge)" [ref=f11e27] [cursor=pointer]:
+                        - /url: /en/projects/1/0
+                    - text: . This project was formerly known as the Core Infrastructure Initiative (CII) Best Practices badge. and was originally developed under the CII. It is now part of the
+                    - link "OpenSSF" [ref=f11e28] [cursor=pointer]:
+                        - /url: https://openssf.org/
+                    - link "Best Practices Working Group (WG)" [ref=f11e29] [cursor=pointer]:
+                        - /url: https://github.com/ossf/wg-best-practices-os-developers
+                    - text: . The OpenSSF is a foundation of the
+                    - link "Linux Foundation (LF)" [ref=f11e30] [cursor=pointer]:
+                        - /url: https://www.linuxfoundation.org/
+                    - text: . The project was formally renamed from "CII Best Practices badge" on 2021-12-24.
+                - paragraph [ref=f11e31]:
+                    - emphasis [ref=f11e32]: Privacy and legal issues
+                    - text: ": Please see our"
+                    - link "privacy policy" [ref=f11e33] [cursor=pointer]:
+                        - /url: https://www.linuxfoundation.org/privacy
+                    - text: ","
+                    - link "about cookies" [ref=f11e34] [cursor=pointer]:
+                        - /url: /en/cookies
+                    - text: ", and"
+                    - link "terms of use" [ref=f11e35] [cursor=pointer]:
+                        - /url: https://www.linuxfoundation.org/terms
+                    - text: . The code for the badging application itself is released under the
+                    - link "MIT" [ref=f11e36] [cursor=pointer]:
+                        - /url: https://opensource.org/licenses/MIT
+                    - text: license (projects pursuing a badge are under their respective licenses). All publicly-available non-code content managed by the badging application that was added or edited after 2024-08-23 is released under the
+                    - link "Community Data License Agreement – Permissive, Version 2.0 (CDLA-Permissive-2.0)" [ref=f11e37] [cursor=pointer]:
+                        - /url: https://cdla.dev/permissive-2-0/
+                    - text: . Previous contributions were licensed under either the
+                    - link "Creative Commons Attribution License version 3.0 (CC-BY-3.0)" [ref=f11e38] [cursor=pointer]:
+                        - /url: https://creativecommons.org/licenses/by/3.0/
+                    - text: ", or as CC-BY version 3.0 or later (CC-BY-3.0+). If referencing collectively or not otherwise noted, please credit the OpenSSF Best Practices badge contributors."
+            - generic [ref=f11e39]:
+                - img "Best Practices Badge logo" [ref=f11e42]
+                - paragraph [ref=f11e45]: "Some badge earners:"
+                - generic [ref=f11e47]:
+                    - link [ref=f11e48] [cursor=pointer]:
+                        - /url: /en/projects/34
+                        - img "Linux" [ref=f11e49]
+                    - link [ref=f11e50] [cursor=pointer]:
+                        - /url: /en/projects/569
+                        - img "Kubernetes" [ref=f11e51]
+                    - link [ref=f11e52] [cursor=pointer]:
+                        - /url: /en/projects/29
+                        - img "Node.js" [ref=f11e53]
+                    - link [ref=f11e54] [cursor=pointer]:
+                        - /url: /en/projects/307
+                        - img "LibreOffice" [ref=f11e55]
+                    - link [ref=f11e56] [cursor=pointer]:
+                        - /url: /en/projects/63
+                        - img "curl" [ref=f11e57]
+                    - link [ref=f11e58] [cursor=pointer]:
+                        - /url: /en/projects/42
+                        - img "GitLab" [ref=f11e59]
+                    - link [ref=f11e60] [cursor=pointer]:
+                        - /url: /en/projects/486
+                        - img "Prometheus" [ref=f11e61]
+                    - link [ref=f11e62] [cursor=pointer]:
+                        - /url: /en/projects/112
+                        - img "pkgsrc" [ref=f11e63]
+                    - link [ref=f11e64] [cursor=pointer]:
+                        - /url: /en/projects/374
+                        - img "Xen" [ref=f11e65]
+                    - link [ref=f11e66] [cursor=pointer]:
+                        - /url: /en/projects/246
+                        - img "OpenStack" [ref=f11e67]
+                    - link [ref=f11e68] [cursor=pointer]:
+                        - /url: /en/projects/684
+                        - img "Node Version Manager (NVM)" [ref=f11e69]
+                    - link [ref=f11e70] [cursor=pointer]:
+                        - /url: /en/projects/74
+                        - img "Zephyr" [ref=f11e71]
+                    - link [ref=f11e72] [cursor=pointer]:
+                        - /url: /en/projects/154
+                        - img "Syncope" [ref=f11e73]
+                    - link [ref=f11e74] [cursor=pointer]:
+                        - /url: /en/projects/152
+                        - img "Apache Libcloud" [ref=f11e75]
+                    - link [ref=f11e76] [cursor=pointer]:
+                        - /url: /en/projects/54
+                        - img "OpenSSL" [ref=f11e77]
+                    - link [ref=f11e78] [cursor=pointer]:
+                        - /url: /en/projects/66
+                        - img "BRL-CAD" [ref=f11e79]
+                    - link [ref=f11e80] [cursor=pointer]:
+                        - /url: /en/projects/209
+                        - img "Nextcloud" [ref=f11e81]
+                    - link [ref=f11e82] [cursor=pointer]:
+                        - /url: /en/projects/197
+                        - img "GnuPG" [ref=f11e83]
+                    - link [ref=f11e84] [cursor=pointer]:
+                        - /url: /en/projects/24
+                        - img "ZAP" [ref=f11e85]
+                    - link [ref=f11e86] [cursor=pointer]:
+                        - /url: /en/projects/249
+                        - img "GNU Make" [ref=f11e87]
+                        - text: GNU Make
+                    - link [ref=f11e88] [cursor=pointer]:
+                        - /url: /en/projects/1699
+                        - img "AppArmor" [ref=f11e89]
+                    - link [ref=f11e90] [cursor=pointer]:
+                        - /url: /en/projects/286
+                        - img "Blender" [ref=f11e91]
+                    - link [ref=f11e92] [cursor=pointer]:
+                        - /url: /en/projects/330
+                        - img "GnuTLS" [ref=f11e93]
+                    - link [ref=f11e94] [cursor=pointer]:
+                        - /url: /en/projects/1351
+                        - img "The Update Framework (tuf)" [ref=f11e95]
+                    - link [ref=f11e96] [cursor=pointer]:
+                        - /url: /en/projects/164
+                        - img "OPNFV" [ref=f11e97]
+                    - link [ref=f11e98] [cursor=pointer]:
+                        - /url: /en/projects/955
+                        - img "Hyperledger" [ref=f11e99]
+        - generic [ref=f11e101]:
+            - paragraph
+            - paragraph [ref=f11e102]: "Please share this:"
+            - link [ref=f11e103] [cursor=pointer]:
+                - /url: https://twitter.com/intent/tweet/?text=Check+out+the+OpenSSF+Best+Practices+Badge+website%21&url=https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e104]: 
+            - link [ref=f11e105] [cursor=pointer]:
+                - /url: https://www.reddit.com/submit/?url=https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e106]: 
+            - link [ref=f11e107] [cursor=pointer]:
+                - /url: https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e108]: 
+            - link [ref=f11e109] [cursor=pointer]:
+                - /url: https://www.linkedin.com/shareArticle?mini=true&source=https%3A%2F%2Fwww.bestpractices.dev%2Fen&summary=Check+out+the+OpenSSF+Best+Practices+Badge+website%21&title=Check+out+the+OpenSSF+Best+Practices+Badge+website%21&url=https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e110]: 
+            - link [ref=f11e111] [cursor=pointer]:
+                - /url: https://news.ycombinator.com/submitlink?t=Check%20out%20the%20OpenSSF%20Best%20Practices%20Badge%20website%21&u=https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e112]: 
+            - link [ref=f11e113] [cursor=pointer]:
+                - /url: mailto:?body=Check%20out%20the%20OpenSSF%20Best%20Practices%20Badge%20website%21%0Ahttps%3A%2F%2Fwww.bestpractices.dev%2Fen&subject=Check%20out%20the%20OpenSSF%20Best%20Practices%20Badge%20website%21%20https%3A%2F%2Fwww.bestpractices.dev%2Fen
+                - generic [ref=f11e114]: 
+    - contentinfo [ref=f11e115]:
+        - generic [ref=f11e117]:
+            - generic [ref=f11e119]:
+                - strong [ref=f11e120]:
+                    - text: Need help? Have a question? See a problem? Please
+                    - emphasis [ref=f11e121]:
+                        - link "file an issue" [ref=f11e122] [cursor=pointer]:
+                            - /url: https://github.com/ossf/best-practices-badge/issues
+                    - text: .
+                - text: Copyright ©
+                - link "OpenSSF Best Practices Badge a Series of LF Projects, LLC" [ref=f11e123] [cursor=pointer]:
+                    - /url: https://www.bestpractices.dev
+                - text: . For web site terms of use, trademark policy and other project policies please see
+                - link "these policies" [ref=f11e124] [cursor=pointer]:
+                    - /url: https://lfprojects.org
+                - text: . For more information, see the websites of the
+                - link "Open Source Security Foundation (OpenSSF)" [ref=f11e125] [cursor=pointer]:
+                    - /url: https://openssf.org
+                - text: and
+                - link "The Linux Foundation" [ref=f11e126] [cursor=pointer]:
+                    - /url: https://www.linuxfoundation.org/
+                - text: . All Rights Reserved. Please see our
+                - link "privacy policy" [ref=f11e127] [cursor=pointer]:
+                    - /url: https://www.linuxfoundation.org/privacy
+                - text: .
+            - generic [ref=f11e128]:
+                - navigation:
+                    - list [ref=f11e129]:
+                        - listitem [ref=f11e130]:
+                            - link [ref=f11e131] [cursor=pointer]:
+                                - /url: https://openssf.org/
+                        - listitem [ref=f11e133]:
+                            - link [ref=f11e134] [cursor=pointer]:
+                                - /url: https://www.linuxfoundation.org/
+                        - listitem [ref=f11e136]:
+                            - link [ref=f11e137] [cursor=pointer]:
+                                - /url: https://www.fastly.com/
+                                - img "Fastly logo" [ref=f11e138]

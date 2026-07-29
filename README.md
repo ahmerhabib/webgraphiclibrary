@@ -13,6 +13,8 @@
 
 webgraphiclibrary gives each repetitive, leak-prone WebGL resource — framebuffers, shaders, programs, buffers, and textures — a small, strongly-typed lifecycle API, then gets out of your way. No scene graph. No materials. No hidden global state. You keep the raw `WebGL*` handles and your own draw calls; the library removes the boilerplate that is easy to get subtly wrong and painful to debug.
 
+> **The story behind the library:** [WGL's problem was never the GPU](https://medium.com/@ahmerhabibb/webgraphiclibrary-wgl-problem-is-never-the-gpu-b9d6436b8453) — why WebGL's API shape is what actually breaks graphics code, and what a fix looks like in the age of AI-generated code.
+
 ![Real-time bloom post-processing built from five framebuffers](docs/screenshots/postprocessing-demo.png)
 
 ```ts
