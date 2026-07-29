@@ -1,0 +1,73 @@
+- generic [active] [ref=f15e1]:
+    - banner [ref=f15e2]:
+        - navigation [ref=f15e4]:
+            - generic [ref=f15e5]:
+                - link "OpenSSF Best Practices" [ref=f15e6] [cursor=pointer]:
+                    - /url: /en
+                - button "Toggle collapsible navigation" [ref=f15e8] [cursor=pointer]
+            - text:   ✓  ✓   ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+    - generic [ref=f15e16]:
+        - heading "Choose a Section to Edit" [level=1] [ref=f15e17]
+        - paragraph [ref=f15e18]:
+            - strong [ref=f15e19]: webgraphiclibrary
+        - paragraph [ref=f15e20]: Select a section to edit.
+        - list [ref=f15e21]:
+            - listitem [ref=f15e22]:
+                - link "Passing" [ref=f15e23] [cursor=pointer]:
+                    - /url: /en/projects/13837/passing/edit
+            - listitem [ref=f15e24]:
+                - link "Silver" [ref=f15e25] [cursor=pointer]:
+                    - /url: /en/projects/13837/silver/edit
+            - listitem [ref=f15e26]:
+                - link "Gold" [ref=f15e27] [cursor=pointer]:
+                    - /url: /en/projects/13837/gold/edit
+            - listitem [ref=f15e28]:
+                - link "Baseline Level 1" [ref=f15e29] [cursor=pointer]:
+                    - /url: /en/projects/13837/baseline-1/edit
+            - listitem [ref=f15e30]:
+                - link "Baseline Level 2" [ref=f15e31] [cursor=pointer]:
+                    - /url: /en/projects/13837/baseline-2/edit
+            - listitem [ref=f15e32]:
+                - link "Baseline Level 3" [ref=f15e33] [cursor=pointer]:
+                    - /url: /en/projects/13837/baseline-3/edit
+            - listitem [ref=f15e34]:
+                - link "Permissions" [ref=f15e35] [cursor=pointer]:
+                    - /url: /en/projects/13837/permissions/edit
+    - contentinfo [ref=f15e36]:
+        - generic [ref=f15e38]:
+            - generic [ref=f15e40]:
+                - strong [ref=f15e41]:
+                    - text: Need help? Have a question? See a problem? Please
+                    - emphasis [ref=f15e42]:
+                        - link "file an issue" [ref=f15e43] [cursor=pointer]:
+                            - /url: https://github.com/ossf/best-practices-badge/issues
+                    - text: .
+                - text: Copyright ©
+                - link "OpenSSF Best Practices Badge a Series of LF Projects, LLC" [ref=f15e44] [cursor=pointer]:
+                    - /url: https://www.bestpractices.dev
+                - text: . For web site terms of use, trademark policy and other project policies please see
+                - link "these policies" [ref=f15e45] [cursor=pointer]:
+                    - /url: https://lfprojects.org
+                - text: . For more information, see the websites of the
+                - link "Open Source Security Foundation (OpenSSF)" [ref=f15e46] [cursor=pointer]:
+                    - /url: https://openssf.org
+                - text: and
+                - link "The Linux Foundation" [ref=f15e47] [cursor=pointer]:
+                    - /url: https://www.linuxfoundation.org/
+                - text: . All Rights Reserved. Please see our
+                - link "privacy policy" [ref=f15e48] [cursor=pointer]:
+                    - /url: https://www.linuxfoundation.org/privacy
+                - text: .
+            - generic [ref=f15e49]:
+                - navigation:
+                    - list [ref=f15e50]:
+                        - listitem [ref=f15e51]:
+                            - link [ref=f15e52] [cursor=pointer]:
+                                - /url: https://openssf.org/
+                        - listitem [ref=f15e54]:
+                            - link [ref=f15e55] [cursor=pointer]:
+                                - /url: https://www.linuxfoundation.org/
+                        - listitem [ref=f15e57]:
+                            - link [ref=f15e58] [cursor=pointer]:
+                                - /url: https://www.fastly.com/
+                                - img "Fastly logo" [ref=f15e59]

@@ -1,0 +1,6 @@
+- generic [active] [ref=e1]:
+    - 'heading "Error 404: Page Not Found" [level=1] [ref=e2]'
+    - paragraph [ref=e3]: Sorry, no such page exists.
+    - paragraph [ref=e4]:
+        - link "Please go to the home page." [ref=e5] [cursor=pointer]:
+            - /url: /en
